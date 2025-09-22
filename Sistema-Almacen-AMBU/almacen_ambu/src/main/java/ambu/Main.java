@@ -1,7 +1,7 @@
 package ambu;
 
 import ambu.models.Usuario;
-import ambu.ui.PanelInicio;
+import ambu.ui.PanelInicioAdmin;
 import ambu.ui.PanelLogin;
 
 import javax.imageio.ImageIO;
@@ -54,7 +54,7 @@ public void onLoginExitoso(Usuario usuario) {
     backgroundPanel.removeAll(); 
 
     if ("administrador".equalsIgnoreCase(usuario.getRol())) {
-        PanelInicio panelAdmin = new PanelInicio(usuarioActual);
+        PanelInicioAdmin panelAdmin = new PanelInicioAdmin(usuarioActual);
         cambiarPanel(panelAdmin); // Usa tu método para cambiar el panel
     } else {
         JPanel panelUsuarioNormal = new JPanel(); 

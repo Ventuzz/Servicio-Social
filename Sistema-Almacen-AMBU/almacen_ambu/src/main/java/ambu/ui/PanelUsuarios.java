@@ -57,10 +57,10 @@ public class PanelUsuarios extends JPanel {
         
         //  --- USAMOS LOS BOTONES PERSONALIZADOS --- 
         CustomButton btnDesactivar = new CustomButton("Activar/Desactivar");
-        CustomButton btnResetPass = new CustomButton("Restablecer Contraseña");
+        //CustomButton btnResetPass = new CustomButton("Restablecer Contraseña");
         
         panelBotones.add(btnDesactivar);
-        panelBotones.add(btnResetPass);
+        //panelBotones.add(btnResetPass);
         add(panelBotones, BorderLayout.SOUTH);
 
         // --- Lógica de los Botones ---

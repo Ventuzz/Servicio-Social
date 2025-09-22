@@ -7,6 +7,7 @@ import ambu.ui.componentes.CustomButton;
 import ambu.ui.componentes.CustomPasswordField;
 import ambu.ui.componentes.CustomTextField;
 import ambu.ui.componentes.PanelTransicion;
+import ambu.ui.dialog.RegistroDialog;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
