@@ -153,7 +153,6 @@ public class PanelInventario extends JPanel {
        ========================= */
 
     private void wireBotones() {
-        // Guardar cambios editados (unitario/masivo según tu TableModel)
         btnGuardar.addActionListener(e -> {
             Set<InventarioItem> modificados = tableModel.getItemsModificados();
             if (modificados == null || modificados.isEmpty()) {
@@ -167,7 +166,6 @@ public class PanelInventario extends JPanel {
                         try {
                             if (inventarioService.actualizarItem(item)) actualizados++;
                         } catch (Exception ex) {
-                            // Continúa con los demás; podrías registrar el error
                         }
                     }
                     return actualizados;

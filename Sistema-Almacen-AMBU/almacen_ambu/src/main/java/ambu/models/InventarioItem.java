@@ -15,7 +15,6 @@ public class InventarioItem {
     private BigDecimal cantidadFisica;
     private Date estanciaEnStock;
 
-    // Constructor completo
     public InventarioItem(int id, String marca, String articulo, String uso, String ubicacion,
                           BigDecimal stockInicial, BigDecimal stockMinimos, BigDecimal stockMaximos,
                           BigDecimal cantidadFisica, Date estanciaEnStock) {
