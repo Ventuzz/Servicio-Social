@@ -3,6 +3,8 @@ package ambu.ui;
 import ambu.models.RegistroHistorial;
 import ambu.models.Usuario;
 import ambu.process.HistorialService;
+import ambu.ui.componentes.CustomButton;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -52,7 +54,7 @@ public class PanelHistorial extends JPanel {
 
         
         
-    // Estilo de tabla (consistente con tus otras vistas)
+    // Estilo de tabla 
     tablaHistorial.setOpaque(false);
     tablaHistorial.setFillsViewportHeight(true);
     tablaHistorial.setBackground(new Color(0, 0, 0, 100));
@@ -78,8 +80,8 @@ public class PanelHistorial extends JPanel {
             // Panel de acciones (sur)
             JPanel panelAcciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             panelAcciones.setOpaque(false);
-            
-            JButton btnRefrescar = new JButton("Refrescar");
+
+            JButton btnRefrescar = new CustomButton("Refrescar");
             btnRefrescar.addActionListener(e -> cargarHistorial());
             panelAcciones.add(btnRefrescar);
 
@@ -95,7 +97,7 @@ public class PanelHistorial extends JPanel {
                 panelBusqueda.add(etiquetaBusqueda);
                 panelBusqueda.add(campoBusqueda);
                 panelAcciones.add(panelBusqueda);
-                JButton btnRegistrarDev = new JButton("Registrar Devolución");
+                JButton btnRegistrarDev = new CustomButton("Registrar Devolución");
                 btnRegistrarDev.setBackground(new Color(60, 179, 113));
                 btnRegistrarDev.setForeground(Color.WHITE);
                 btnRegistrarDev.addActionListener(e -> registrarDevolucion());
@@ -154,8 +156,7 @@ public class PanelHistorial extends JPanel {
 
         RegistroHistorial registro = tableModel.getDatoEnFila(filaSeleccionada);
 
-        // --- CAMBIO 1: Validar el tipo correcto ("Préstamo") ---
-        // --- CAMBIO 2: Validar el estado correcto ("ENTREGADO") ---
+
         if (!"Préstamo".equalsIgnoreCase(registro.getTipo()) || !"ENTREGADO".equalsIgnoreCase(registro.getEstado())) {
             JOptionPane.showMessageDialog(this, "Solo se pueden devolver préstamos con estado 'ENTREGADO'.", "Acción no válida", JOptionPane.ERROR_MESSAGE);
             return;
