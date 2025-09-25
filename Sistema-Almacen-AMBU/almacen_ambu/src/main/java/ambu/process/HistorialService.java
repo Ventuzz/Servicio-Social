@@ -62,11 +62,14 @@ public class HistorialService {
 
     /** Marca un préstamo como DEVUELTO. */
     public boolean registrarDevolucion(int idPrestamo, long idUsuarioReceptor) throws SQLException {
-        String sql = "UPDATE prestamos SET estado='DEVUELTO', fecha_devolucion=CURRENT_TIMESTAMP " +
+        // ASUNCIÓN: Tu tabla 'prestamos' tiene una columna llamada 'id_usuario_receptor_dev' (o similar).
+        String sql = "UPDATE prestamos SET estado='DEVUELTO', fecha_devolucion=CURRENT_TIMESTAMP, " +
+                     "id_usuario_receptor_dev = ? " + // <-- SE AÑADE ESTO
                      "WHERE id_prestamo=? AND estado='ENTREGADO'";
         try (Connection cn = DatabaseConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setInt(1, idPrestamo);
+            ps.setLong(1, idUsuarioReceptor); // <-- Se establece el ID del receptor
+            ps.setInt(2, idPrestamo);
             return ps.executeUpdate() > 0;
         }
     }
@@ -118,14 +121,18 @@ public class HistorialService {
         String sql =
                 "SELECT p.id_prestamo AS id, p.estado, p.cantidad, " +
                 "       p.fecha_aprobacion, p.fecha_entrega, p.fecha_devolucion, " +
-                "       e.articulo AS insumo, u.nom_usuario AS solicitante, uj.nom_usuario AS aprobador " +
+                "       e.articulo AS insumo, u.nom_usuario AS solicitante, uj.nom_usuario AS aprobador, " +
+                "       ur.nom_usuario AS receptor_dev " + // <-- SE AÑADE ESTA COLUMNA
                 "FROM prestamos p " +
                 "JOIN existencias e ON e.id = p.id_existencia " +
                 "JOIN solicitudes_insumos s ON s.id_solicitud = p.id_solicitud " +
                 "JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
                 "LEFT JOIN usuarios uj ON uj.usuario_id = s.id_usuario_jefe_inmediato " +
+                // --- SE AÑADE ESTE JOIN ---
+                "LEFT JOIN usuarios ur ON ur.usuario_id = p.id_usuario_receptor_dev " +
                 (filterSolicitante != null ? "WHERE s.id_usuario_solicitante = ? " : "") +
                 "ORDER BY COALESCE(p.fecha_devolucion, p.fecha_entrega, p.fecha_aprobacion) DESC, p.id_prestamo DESC";
+        
         List<RegistroHistorial> list = new ArrayList<>();
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             if (filterSolicitante != null) ps.setLong(1, filterSolicitante.longValue());
@@ -145,11 +152,13 @@ public class HistorialService {
                     r.setNombreUsuario(rs.getString("solicitante"));
                     r.setEstado(rs.getString("estado"));
                     r.setNombreAprobador(rs.getString("aprobador"));
-                    r.setNombreReceptorDev(null); // no almacenamos receptor en esquema actual
+                    // --- SE ASIGNA EL VALOR DEL RECEPTOR ---
+                    r.setNombreReceptorDev(rs.getString("receptor_dev"));
                     list.add(r);
                 }
             }
         }
         return list;
     }
+
 }

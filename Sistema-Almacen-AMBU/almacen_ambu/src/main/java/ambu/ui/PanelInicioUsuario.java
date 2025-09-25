@@ -16,6 +16,11 @@ public class PanelInicioUsuario extends JPanel {
     private static final int TAB_SOLICITUD = 0;
     private static final int TAB_HISTORIAL = 1;
 
+    // Constructor de compatibilidad (sin manejador explícito de logout)
+    public PanelInicioUsuario(Usuario usuarioActual) {
+        this(usuarioActual, () -> {});
+    }
+
     // Constructor modificado para aceptar la acción de logout
     public PanelInicioUsuario(Usuario usuarioActual, Runnable onLogout) {
         this.usuarioActual = usuarioActual;
@@ -27,12 +32,11 @@ public class PanelInicioUsuario extends JPanel {
         buildSplitLayout(onLogout); // Pasamos la acción al método que construye la UI
     }
     
-    // (El método buildHeader se mantiene igual)
+    // Encabezado con título y saludo
     private void buildHeader() {
-        // ... tu código de buildHeader aquí ...
-        JLabel titulo = new JLabel("Panel de Usuario", SwingConstants.CENTER);
-        titulo.setFont(new Font("Arial", Font.BOLD, 28));
-        titulo.setForeground(new Color(20, 255, 120));
+        JLabel titulo = new JLabel("Panel del Usuario", SwingConstants.CENTER);
+        titulo.setFont(new Font("Arial", Font.BOLD, 22));
+        titulo.setForeground(Color.WHITE);
 
         String nombre = (usuarioActual != null && usuarioActual.getNomUsuario() != null)
                 ? usuarioActual.getNomUsuario() : "Usuario";
@@ -49,14 +53,17 @@ public class PanelInicioUsuario extends JPanel {
     // Modificamos buildSplitLayout para que reciba y use la acción de logout
     private void buildSplitLayout(Runnable onLogout) {
         menuPestanas = new JTabbedPane(JTabbedPane.LEFT);
-        // ... (configuración de menuPestanas como la tenías) ...
+        // Configuración del tabbed pane
+        menuPestanas.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+        menuPestanas.setFocusable(false);
         menuPestanas.setOpaque(false);
         menuPestanas.setForeground(Color.WHITE);
         menuPestanas.setFont(new Font("Arial", Font.BOLD, 14));
         menuPestanas.setUI(new CustomTabbedPaneUI());
+        menuPestanas.setMinimumSize(new Dimension(0, 0));
         
-        menuPestanas.addTab("Solicitud de Material", tabPlaceholder("Solicitud de Material"));
-        menuPestanas.addTab("Historial", tabPlaceholder("Historial"));
+        menuPestanas.addTab("Solicitud de Material", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Historial", panelClear(new BorderLayout()));
         
         // --- BOTÓN CERRAR SESIÓN ---
         JButton logoutButton = crearBoton("Cerrar Sesión");
@@ -71,16 +78,26 @@ public class PanelInicioUsuario extends JPanel {
         panelIzquierdo.add(menuPestanas, BorderLayout.CENTER);
         panelIzquierdo.add(logoutButton, BorderLayout.SOUTH);
         panelIzquierdo.setPreferredSize(new Dimension(260, 400));
+        panelIzquierdo.setMinimumSize(new Dimension(0, 0));
         // --- FIN BOTÓN ---
 
         contentPanel = panelClear(new BorderLayout(10, 10));
+        contentPanel.setMinimumSize(new Dimension(0, 0));
 
         split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelIzquierdo, contentPanel);
-        // ... (configuración del split como la tenías) ...
+        // Habilita arrastre fluido y libertad total del divisor
+        split.setContinuousLayout(true);
+        split.setOneTouchExpandable(true);
+        // Permite que ambos lados se contraigan hasta 0 px
+        panelIzquierdo.setMinimumSize(new Dimension(0, 0));
+        menuPestanas.setMinimumSize(new Dimension(0, 0));
+        contentPanel.setMinimumSize(new Dimension(0, 0));
+        // Un divisor más grueso para que sea fácil de agarrar
+        split.setDividerSize(5);
+        // Peso de redimensionamiento (22% para el menú)
         split.setResizeWeight(0.22);
         split.setOpaque(false);
         split.setBorder(null);
-        split.setDividerSize(6);
         add(split, BorderLayout.CENTER);
 
         menuPestanas.addChangeListener(e -> {
@@ -103,14 +120,27 @@ public class PanelInicioUsuario extends JPanel {
                 contentPanel.add(buildHistorialView(), BorderLayout.CENTER);
                 break;
             default:
-                contentPanel.add(buildComingSoonView(), BorderLayout.CENTER);
+                contentPanel.add(new JLabel("Sección no disponible"), BorderLayout.CENTER);
         }
         contentPanel.revalidate();
         contentPanel.repaint();
     }
 
-    // ====== Vistas del panel derecho ======
+    // Utilidades de estilo: panel sin fondo oscuro
+    private JPanel panelClear(LayoutManager lm) {
+        JPanel p = new JPanel(lm);
+        p.setOpaque(false);
+        return p;
+    }
 
+    private JLabel etiquetaSeccion(String texto) {
+        JLabel l = new JLabel(texto);
+        l.setFont(new Font("Arial", Font.BOLD, 18));
+        l.setForeground(Color.WHITE);
+        return l;
+    }
+
+ 
     /** Vista: Solicitud de Material (sin paneles oscuros) */
     private JComponent buildSolicitudView() {
         JPanel root = panelClear(new BorderLayout(12,12));
@@ -125,40 +155,23 @@ public class PanelInicioUsuario extends JPanel {
 
         JLabel desc = new JLabel("<html><div style='text-align:center;'>"
                 + "Solicita insumos disponibles en almacén.<br/>"
-                + "Tu solicitud será revisada por un administrador."
+                + "Tu solicitud será revisada por un administrador." 
                 + "</div></html>");
         desc.setForeground(Color.WHITE);
-        center.add(desc, gbc);
+        desc.setFont(new Font("Arial", Font.PLAIN, 14));
 
+        JButton solicitar = crearBoton("Nueva solicitud");
+        solicitar.addActionListener(e -> abrirDialogSolicitudes());
+
+        center.add(desc, gbc);
         gbc.gridy++;
-        JButton btnSolicitar = crearBoton("Solicitar Material");
-        btnSolicitar.addActionListener(e -> abrirDialogSolicitudes());
-        center.add(btnSolicitar, gbc);
+        center.add(solicitar, gbc);
 
         root.add(center, BorderLayout.CENTER);
-
-        // Pie con nota
-        JLabel nota = new JLabel("Nota: sólo puedes solicitar artículos con stock disponible.");
-        nota.setForeground(new Color(230, 230, 230));
-        JPanel south = panelClear(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        south.add(nota);
-        root.add(south, BorderLayout.SOUTH);
-
         return root;
     }
 
-    /** Placeholder para futuras pestañas */
-    private JComponent buildComingSoonView() {
-        JPanel p = panelClear(new GridBagLayout());
-        JLabel l = new JLabel("Contenido próximamente…");
-        l.setForeground(Color.LIGHT_GRAY);
-        l.setFont(new Font("Arial", Font.ITALIC, 14));
-        p.add(l, new GridBagConstraints());
-        return p;
-    }
-
-    // ===== Acción principal =====
-    private void abrirDialogSolicitudes() {
+        private void abrirDialogSolicitudes() {
         if (usuarioActual == null || usuarioActual.getId() == 0) {
             JOptionPane.showMessageDialog(this, "No hay usuario en sesión. Vuelve a iniciar sesión.", "Sesión", JOptionPane.WARNING_MESSAGE);
             return;
@@ -173,35 +186,15 @@ public class PanelInicioUsuario extends JPanel {
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
     }
-
-    // ============= Utilidades sin overlays =============
-    /** Panel totalmente transparente (sin pintar nada encima del fondo). */
-    private JPanel panelClear(LayoutManager lm) {
-        JPanel p = new JPanel(lm);
-        p.setOpaque(false);
-        return p;
-    }
-
-    private JLabel etiquetaSeccion(String txt) {
-        JLabel l = new JLabel(txt);
-        l.setForeground(Color.WHITE);
-        l.setFont(new Font("Arial", Font.BOLD, 16));
-        return l;
-    }
-
-    private JPanel tabPlaceholder(String titulo) {
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setToolTipText(titulo);
-        return p;
-    }
-
+    
     private JButton crearBoton(String texto) {
         final Color verde = new Color(20, 255, 120);
         final Color verdeSuave = new Color(20, 255, 120, 150);
         final Color fondoBtn = new Color(20, 20, 20); // botón sí mantiene fondo oscuro para legibilidad
 
         JButton b = new JButton(texto);
+        b.setContentAreaFilled(true);
+        b.setOpaque(true);
         b.setFocusPainted(false);
         b.setForeground(Color.WHITE);
         b.setBackground(fondoBtn);
@@ -230,14 +223,11 @@ public class PanelInicioUsuario extends JPanel {
         return b;
     }
 
-private JComponent buildHistorialView() {
-    JPanel root = panelClear(new BorderLayout(12,12));
-    root.add(etiquetaSeccion("Historial de movimientos"), BorderLayout.NORTH);
-
-    // Contenido: PanelHistorial dentro (usa el usuario actual)
-    PanelHistorial ph = new PanelHistorial(usuarioActual);
-    root.add(ph, BorderLayout.CENTER);
-    return root;
-}
+    private JComponent buildHistorialView() {
+        JPanel root = panelClear(new BorderLayout(12,12));
+        PanelHistorial ph = new PanelHistorial(usuarioActual, false); // false = vista usuario, no admin
+        root.add(ph, BorderLayout.CENTER);
+        return root;
+    }
 
 }

@@ -86,7 +86,7 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.add(panelInventario, "Inventario");
         PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId());
         panelDerecho.add(panelAprobaciones, "Aprobaciones");
-        panelDerecho.add(new PanelHistorial(usuario), "Historial");
+        panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
 
         // 5. LÓGICA DE CAMBIO DE PESTAÑA
         menuPestanas.addChangeListener(e -> {

@@ -135,4 +135,25 @@ public boolean cambiarEstadoUsuario(long usuarioId, boolean nuevoEstado) {
     }
     return false;
 }
+
+    public boolean cambiarRolUsuario(long usuarioId, String nuevoRol) {
+    if (!nuevoRol.equals("usuario") && !nuevoRol.equals("administrador")) {
+        throw new IllegalArgumentException("Rol inválido: " + nuevoRol);
+    }
+
+    String sql = "UPDATE usuarios SET rol = ? WHERE usuario_id = ?";
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+        pstmt.setString(1, nuevoRol);
+        pstmt.setLong(2, usuarioId);
+
+        int affectedRows = pstmt.executeUpdate();
+        return affectedRows > 0;
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return false;
+    }
 }

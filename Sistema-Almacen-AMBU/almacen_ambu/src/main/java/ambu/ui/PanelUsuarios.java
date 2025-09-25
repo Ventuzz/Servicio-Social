@@ -58,11 +58,31 @@ public class PanelUsuarios extends JPanel {
         //  --- USAMOS LOS BOTONES PERSONALIZADOS --- 
         CustomButton btnDesactivar = new CustomButton("Activar/Desactivar");
         //CustomButton btnResetPass = new CustomButton("Restablecer Contraseña");
+        CustomButton btnCambiarRol = new CustomButton("Cambiar Rol");
         
         panelBotones.add(btnDesactivar);
         //panelBotones.add(btnResetPass);
+        panelBotones.add(btnCambiarRol);
         add(panelBotones, BorderLayout.SOUTH);
 
+        btnCambiarRol.addActionListener(e -> {
+            int selectedRow = tablaUsuarios.getSelectedRow();
+            if (selectedRow >= 0) {
+                long userId = (long) tableModel.getValueAt(selectedRow, 0);
+                String currentRole = (String) tableModel.getValueAt(selectedRow, 3);
+                String newRole = currentRole.equals("usuario") ? "administrador" : "usuario";
+
+                boolean exito = loginService.cambiarRolUsuario(userId, newRole);
+                if (exito) {
+                    cargarUsuarios();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo cambiar el rol.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Por favor, selecciona un usuario de la tabla.");
+            }
+        });
+        
         // --- Lógica de los Botones ---
         btnDesactivar.addActionListener(e -> {
             int selectedRow = tablaUsuarios.getSelectedRow();

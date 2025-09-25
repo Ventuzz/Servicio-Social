@@ -5,21 +5,22 @@ import ambu.process.TicketsService.DisponibleItem;
 import ambu.process.TicketsService.ItemSolicitado;
 
 import javax.swing.*;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.DocumentEvent;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.table.TableRowSorter;
 
-/**
- * Panel de Usuario para crear solicitudes de préstamo (Java 11).
- */
+
 public class PanelTicketsUsuario extends JPanel {
 
     private final TicketsService service = new TicketsService();
     private final long idSolicitante;
     private final Long idJefe; // puede ser null
-
+    
     private JTable tblDisponibles;
     private JTable tblCarrito;
     private DisponiblesTableModel disponiblesModel;
@@ -27,6 +28,8 @@ public class PanelTicketsUsuario extends JPanel {
     private JTextField txtCantidad;
     private JTextField txtUnidad;
     private JTextArea txtObs;
+    private JTextField campoBusqueda;
+    private TableRowSorter<DisponiblesTableModel> sorter;
 
     public PanelTicketsUsuario(long idSolicitante, Long idJefe) {
         this.idSolicitante = idSolicitante;
@@ -38,8 +41,9 @@ public class PanelTicketsUsuario extends JPanel {
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
-
-        JLabel title = new JLabel("Solicitar materiales (Sistema de Tickets)");
+        setPreferredSize(new Dimension(800, 600));
+        
+        JLabel title = new JLabel("Solicitar materiales y equipo", SwingConstants.CENTER);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         add(title, BorderLayout.NORTH);
 
@@ -50,10 +54,40 @@ public class PanelTicketsUsuario extends JPanel {
         // Disponibles
         disponiblesModel = new DisponiblesTableModel();
         tblDisponibles = new JTable(disponiblesModel);
+        sorter = new TableRowSorter<>(disponiblesModel);
+        tblDisponibles.setRowSorter(sorter);
+
+        JPanel panelSuperiorNorte = new JPanel(new BorderLayout());
+        panelSuperiorNorte.add(new JLabel("Inventario disponible"), BorderLayout.WEST);
+        
+        JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panelBusqueda.add(new JLabel("Buscar:"));
+        campoBusqueda = new JTextField(20); // Ancho del campo de búsqueda
+        panelBusqueda.add(campoBusqueda);
+        panelSuperiorNorte.add(panelBusqueda, BorderLayout.EAST);
+        
+
         JScrollPane spDisp = new JScrollPane(tblDisponibles);
         JPanel pDisp = new JPanel(new BorderLayout(5,5));
         pDisp.add(new JLabel("Inventario disponible"), BorderLayout.NORTH);
+        pDisp.add(panelSuperiorNorte, BorderLayout.NORTH);
         pDisp.add(spDisp, BorderLayout.CENTER);
+
+        campoBusqueda.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filtrarTabla();
+            }
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filtrarTabla();
+            }
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                filtrarTabla();
+            }
+        });
+        
 
         JPanel pForm = new JPanel(new FlowLayout(FlowLayout.LEFT));
         txtCantidad = new JTextField(6);
@@ -95,6 +129,16 @@ public class PanelTicketsUsuario extends JPanel {
         split.setBottomComponent(pCar);
     }
 
+     private void filtrarTabla() {
+        String texto = campoBusqueda.getText();
+        if (texto.trim().length() == 0) {
+            sorter.setRowFilter(null); // Si no hay texto, no se filtra
+        } else {
+            // El "(?i)" hace que la búsqueda no distinga mayúsculas de minúsculas
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + texto));
+        }
+    }
+
     private void cargarDisponiblesAsync() {
         new SwingWorker<List<DisponibleItem>, Void>() {
             @Override protected List<DisponibleItem> doInBackground() throws Exception {
@@ -119,10 +163,10 @@ public class PanelTicketsUsuario extends JPanel {
         String sc = txtCantidad.getText().trim();
         String unidad = txtUnidad.getText().trim();
         String obs = txtObs.getText().trim();
-        if (sc.isEmpty() || unidad.isEmpty()) {
-            showWarn("Ingresa cantidad y unidad.");
+        if (sc.isEmpty() || unidad.isEmpty() || obs.isEmpty()) {
+            showWarn("Debes ingresar cantidad, unidad y observaciones.");
             return;
-        }
+    }
         BigDecimal cant;
         try { cant = new BigDecimal(sc); }
         catch (NumberFormatException ex) { showWarn("Cantidad inválida."); return; }
