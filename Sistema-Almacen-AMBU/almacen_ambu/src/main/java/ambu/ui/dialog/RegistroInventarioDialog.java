@@ -2,16 +2,17 @@ package ambu.ui.dialog;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import ambu.models.InventarioItem;
 import ambu.process.InventarioService;
 import ambu.ui.componentes.CustomButton;
 import ambu.ui.componentes.CustomTextField;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -22,6 +23,8 @@ public class RegistroInventarioDialog extends JDialog {
     private CustomTextField marcaField, articuloField, usoField, ubicacionField;
     private CustomTextField stockInicialField, stockMinimosField, stockMaximosField, cantidadFisicaField;
     private CustomTextField fechaField;
+    private JLabel lblVistaPrevia;
+    private byte[] fotoBytes;
     private int initialX;
     private int initialY;
 
@@ -31,11 +34,11 @@ public class RegistroInventarioDialog extends JDialog {
         // Estilo del diálogo
         setUndecorated(true);
         setBackground(new Color(0, 0, 0, 0));
-        setSize(500, 720); // Un poco más alto
+        setSize(750, 720); // Un poco más alto
         setLocationRelativeTo(owner);
 
         // Panel principal con fondo redondeado
-        JPanel roundedPanel = new JPanel(new GridBagLayout()) {
+        JPanel roundedPanel = new JPanel(new BorderLayout(20, 15)) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -50,24 +53,14 @@ public class RegistroInventarioDialog extends JDialog {
         roundedPanel.setBorder(new EmptyBorder(20, 30, 20, 30));
         setContentPane(roundedPanel);
 
-         roundedPanel.addMouseListener(new java.awt.event.MouseAdapter() {
-        @Override
-        public void mousePressed(java.awt.event.MouseEvent e) {
-            // Capturamos la posición inicial del clic
-            initialX = e.getX();
-            initialY = e.getY();
-        }
-    });
+                roundedPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mousePressed(java.awt.event.MouseEvent e) { initialX = e.getX(); initialY = e.getY(); }
+        });
+        roundedPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override public void mouseDragged(java.awt.event.MouseEvent e) { setLocation(e.getXOnScreen() - initialX, e.getYOnScreen() - initialY); }
+        });
 
-    roundedPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-        @Override
-        public void mouseDragged(java.awt.event.MouseEvent e) {
-            // Calculamos la nueva posición de la ventana y la movemos
-            int newX = e.getXOnScreen() - initialX;
-            int newY = e.getYOnScreen() - initialY;
-            setLocation(newX, newY);
-        }
-    });
+    
         // --- Componentes ---
         marcaField = new CustomTextField(20);
         articuloField = new CustomTextField(20);
@@ -83,6 +76,7 @@ public class RegistroInventarioDialog extends JDialog {
 
         CustomButton btnGuardar = new CustomButton("Guardar Artículo");
         CustomButton btnCancelar = new CustomButton("Cancelar");
+        CustomButton btnSubirFoto = new CustomButton("Subir Foto");
 
         // --- Título ---
         JLabel titleLabel = new JLabel("Añadir Nuevo Artículo");
@@ -92,6 +86,7 @@ public class RegistroInventarioDialog extends JDialog {
         
         // --- Lógica de Botones (sin cambios) ---
         btnCancelar.addActionListener(e -> dispose());
+        btnSubirFoto.addActionListener(e -> seleccionarFoto());
         btnGuardar.addActionListener(e -> {
             try {
                 // --- VALIDACIÓN 1: QUE NINGÚN CAMPO ESTÉ VACÍO ---
@@ -109,7 +104,6 @@ public class RegistroInventarioDialog extends JDialog {
                 }
 
                 // --- VALIDACIÓN 2: QUE LOS NÚMEROS SEAN VÁLIDOS (NO LETRAS, NO NEGATIVOS) ---
-                // El try-catch general ya se encarga de las letras.
                 BigDecimal stockInicial = new BigDecimal(stockInicialField.getText());
                 BigDecimal stockMinimos = new BigDecimal(stockMinimosField.getText());
                 BigDecimal stockMaximos = new BigDecimal(stockMaximosField.getText());
@@ -121,7 +115,7 @@ public class RegistroInventarioDialog extends JDialog {
                     stockMaximos.compareTo(BigDecimal.ZERO) < 0 ||
                     cantidadFisica.compareTo(BigDecimal.ZERO) < 0) {
                     JOptionPane.showMessageDialog(this, "Las cantidades de stock no pueden ser números negativos.", "Error de Datos", JOptionPane.ERROR_MESSAGE);
-                    return; // Detiene el proceso
+                    return; 
                 }
 
                 // --- VALIDACIÓN 3: QUE LA FECHA SEA EXACTAMENTE LA DE HOY ---
@@ -149,7 +143,8 @@ public class RegistroInventarioDialog extends JDialog {
                     stockMinimos,
                     stockMaximos,
                     cantidadFisica,
-                    fechaIngresada
+                    fechaIngresada,
+                    this.fotoBytes
                 );
                 
                 boolean exito = inventarioService.crearItem(newItem);
@@ -169,36 +164,21 @@ public class RegistroInventarioDialog extends JDialog {
             }
         });
 
-        // ✨ --- LAYOUT CORREGIDO Y UNIFORME --- ✨
+        //  --- LAYOUT CORREGIDO Y UNIFORME --- 
+        JPanel panelFormulario = new JPanel(new GridBagLayout());
+        panelFormulario.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 5, 8, 5); // Espaciado uniforme
         gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        // Título
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; gbc.weightx = 1.0;
-        gbc.insets = new Insets(5, 5, 25, 5); // Más espacio debajo del título
-        add(titleLabel, gbc);
-
-        // Reset para los campos
-        gbc.gridwidth = 1;
-        gbc.insets = new Insets(8, 5, 8, 5);
         
-        final int[] fila = {1}; // Contador de filas como array para mutabilidad
-
-        // Función lambda para añadir filas fácilmente
+        final int[] fila = {0};
         BiConsumer<String, JComponent> addRow = (labelText, component) -> {
-            gbc.gridx = 0;
-            gbc.gridy = fila[0];
-            gbc.weightx = 0.1; // La etiqueta no se estira mucho
-            add(new JLabel(labelText) {{ setForeground(Color.WHITE); }}, gbc);
-
-            gbc.gridx = 1;
-            gbc.gridy = fila[0];
-            gbc.weightx = 0.9; // El campo de texto se lleva la mayor parte del espacio
-            add(component, gbc);
+            gbc.gridx = 0; gbc.gridy = fila[0]; gbc.weightx = 0.1; gbc.anchor = GridBagConstraints.WEST;
+            panelFormulario.add(new JLabel(labelText) {{ setForeground(Color.WHITE); }}, gbc);
+            gbc.gridx = 1; gbc.gridy = fila[0]; gbc.weightx = 0.9;
+            panelFormulario.add(component, gbc);
             fila[0]++;
         };
-        
         addRow.accept("Marca:", marcaField);
         addRow.accept("Artículo:", articuloField);
         addRow.accept("Uso:", usoField);
@@ -209,18 +189,48 @@ public class RegistroInventarioDialog extends JDialog {
         addRow.accept("Stock Máximo:", stockMaximosField);
         addRow.accept("Fecha Estancia:", fechaField);
 
-        // Botones
+        // --- Panel de Foto (Derecha) ---
+        JPanel panelFoto = new JPanel(new BorderLayout(10, 10));
+        panelFoto.setOpaque(false);
+        lblVistaPrevia = new JLabel("Vista Previa", SwingConstants.CENTER);
+        lblVistaPrevia.setPreferredSize(new Dimension(200, 200));
+        lblVistaPrevia.setBorder(BorderFactory.createEtchedBorder());
+        lblVistaPrevia.setForeground(Color.WHITE);
+        panelFoto.add(lblVistaPrevia, BorderLayout.CENTER);
+        panelFoto.add(btnSubirFoto, BorderLayout.SOUTH);
+
+        // --- Panel de Botones Inferior ---
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         panelBotones.setOpaque(false);
         panelBotones.add(btnGuardar);
         panelBotones.add(btnCancelar);
-        
-        gbc.gridx = 0; gbc.gridy = fila[0]; gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.insets = new Insets(25, 5, 5, 5);
-        add(panelBotones, gbc);
+
+        // --- Ensamblaje Final ---
+        roundedPanel.add(titleLabel, BorderLayout.NORTH);
+        roundedPanel.add(panelFormulario, BorderLayout.CENTER);
+        roundedPanel.add(panelFoto, BorderLayout.EAST);
+        roundedPanel.add(panelBotones, BorderLayout.SOUTH);
     }
     
+        private void seleccionarFoto() {
+        JFileChooser chooser = new JFileChooser();
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("Imágenes (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif");
+        chooser.setFileFilter(filter);
+
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File archivo = chooser.getSelectedFile();
+            try {
+                this.fotoBytes = Files.readAllBytes(archivo.toPath());
+                ImageIcon iconoOriginal = new ImageIcon(archivo.getAbsolutePath());
+                Image imagenEscalada = iconoOriginal.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
+                lblVistaPrevia.setText("");
+                lblVistaPrevia.setIcon(new ImageIcon(imagenEscalada));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error al leer la imagen.", "Error", JOptionPane.ERROR_MESSAGE);
+                this.fotoBytes = null;
+            }
+        }
+    }
 
 }

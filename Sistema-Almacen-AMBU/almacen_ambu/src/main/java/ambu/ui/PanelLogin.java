@@ -83,6 +83,7 @@ public class PanelLogin extends RoundedPanel {
         passLabel.setFont(new Font("Arial", Font.BOLD, 14));
 
         // --- Lógica del botón ---
+        passField.addActionListener((ActionEvent e) -> loginButton.doClick());
         loginButton.addActionListener((ActionEvent e) -> {
             Frame topFrame = (Frame) SwingUtilities.getWindowAncestor(this);
             PanelTransicion loadingDialog = new PanelTransicion(topFrame);
@@ -128,7 +129,7 @@ public class PanelLogin extends RoundedPanel {
 
             String username = userField.getText();
             String password = new String(passField.getPassword());
-
+            
             Usuario usuario = loginService.login(username, password);
 
             if (usuario != null) {

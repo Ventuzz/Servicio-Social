@@ -18,13 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Panel de Aprobaciones (Administrador) - Java 11
- * - Fondo negro semitransparente
- * - Tablas estilizadas (igual a PanelInventario)
- * - Botones y textos con la misma paleta
- * - IDs long para BIGINT
- */
+
 public class PanelAprobacionesAdmin extends JPanel {
 
     private final TicketsService service = new TicketsService();
@@ -47,7 +41,7 @@ public class PanelAprobacionesAdmin extends JPanel {
     public PanelAprobacionesAdmin() { this(0L); }
     public PanelAprobacionesAdmin(long adminId) {
         this.adminId = adminId;
-        setOpaque(false); // lo pintamos a mano en paintComponent
+        setOpaque(false); 
         initUI();
         recargarSolicitudes();
         recargarPrestamosAprobados();

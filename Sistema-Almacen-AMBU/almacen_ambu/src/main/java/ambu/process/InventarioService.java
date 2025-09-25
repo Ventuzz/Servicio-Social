@@ -6,8 +6,8 @@ import ambu.models.InventarioItem;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.swing.JOptionPane;
+import javax.xml.crypto.Data;
 
 public class InventarioService {
 
@@ -30,7 +30,8 @@ public class InventarioService {
                     rs.getBigDecimal("stock_minimos"),
                     rs.getBigDecimal("stock_maximos"),
                     rs.getBigDecimal("cantidad_fisica"),
-                    rs.getDate("estancia_en_stock")
+                    rs.getDate("estancia_en_stock"),
+                    rs.getBytes("foto") 
                 ));
             }
         } catch (SQLException e) {
@@ -39,10 +40,30 @@ public class InventarioService {
         return inventario;
     }
 
+    public boolean actualizarFotoPorId(int id, byte[] fotoBytes) {
+    final String SQL = "UPDATE existencias SET foto = ? WHERE id = ?"; 
+
+        try (java.sql.Connection cn = DatabaseConnection.getConnection(); 
+            java.sql.PreparedStatement ps = cn.prepareStatement(SQL)) {
+
+            if (fotoBytes != null && fotoBytes.length > 0) {
+                ps.setBytes(1, fotoBytes);
+            } else {
+                ps.setNull(1, java.sql.Types.BLOB);
+            }
+            ps.setInt(2, id);
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean actualizarItem(InventarioItem item) {
         String sql = "UPDATE existencias SET marca = ?, articulo = ?, uso = ?, ubicacion = ?, " +
                      "stock_inicial = ?, stock_minimos = ?, stock_maximos = ?, cantidad_fisica = ?, " +
-                     "estancia_en_stock = ? WHERE id = ?";
+                     "estancia_en_stock = ?, foto = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
@@ -54,9 +75,14 @@ public class InventarioService {
             pstmt.setBigDecimal(6, item.getStockMinimos());
             pstmt.setBigDecimal(7, item.getStockMaximos());
             pstmt.setBigDecimal(8, item.getCantidadFisica());
-            // Para las fechas, es necesario convertir de java.util.Date a java.sql.Date
             pstmt.setDate(9, new java.sql.Date(item.getEstanciaEnStock().getTime()));
-            pstmt.setInt(10, item.getId());
+            if (item.getFoto() != null) {
+                pstmt.setBytes(10, item.getFoto());
+            } else {
+                pstmt.setNull(10, Types.BLOB);
+                
+            }
+            pstmt.setInt(11, item.getId());
 
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
@@ -92,7 +118,8 @@ public class InventarioService {
                         rs.getBigDecimal("stock_minimos"),
                         rs.getBigDecimal("stock_maximos"),
                         rs.getBigDecimal("cantidad_fisica"),
-                        rs.getDate("estancia_en_stock")
+                        rs.getDate("estancia_en_stock"),
+                        rs.getBytes("foto")
                     ));
                 }
             }
@@ -118,8 +145,8 @@ public class InventarioService {
 
     public boolean crearItem(InventarioItem item) {
     String sql = "INSERT INTO existencias (marca, articulo, uso, ubicacion, stock_inicial, " +
-                 "stock_minimos, stock_maximos, cantidad_fisica, estancia_en_stock) " +
-                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                 "stock_minimos, stock_maximos, cantidad_fisica, estancia_en_stock, foto) " +
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     try (Connection conn = DatabaseConnection.getConnection();
          PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -132,6 +159,11 @@ public class InventarioService {
         pstmt.setBigDecimal(7, item.getStockMaximos());
         pstmt.setBigDecimal(8, item.getCantidadFisica());
         pstmt.setDate(9, new java.sql.Date(item.getEstanciaEnStock().getTime()));
+        if (item.getFoto() != null) {
+            pstmt.setBytes(10, item.getFoto());
+        } else {
+            pstmt.setNull(10, Types.BLOB);
+        }
 
         int affectedRows = pstmt.executeUpdate();
         return affectedRows > 0;

@@ -92,7 +92,7 @@ public class RegistroDialog extends JDialog {
             JOptionPane.showMessageDialog(this, resultado);
             
             if (resultado.contains("éxito")) {
-                dispose(); // Cierra el diálogo si el registro fue exitoso
+                dispose(); 
             }
         });
 

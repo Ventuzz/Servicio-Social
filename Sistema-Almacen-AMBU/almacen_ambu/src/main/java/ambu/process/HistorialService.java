@@ -7,11 +7,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Servicio de Historial
- * Genera registros a partir de solicitudes y préstamos.
- * Compatible con Java 11.
- */
+
 public class HistorialService {
 
     public HistorialService() {}
@@ -29,7 +25,6 @@ public class HistorialService {
             out.addAll(querySolicitudes(cn, null));
             out.addAll(queryPrestamos(cn, null));
         }
-        // Podrías ordenar por fecha descendente aquí
         out.sort((a,b) -> {
             Timestamp ta = a.getFecha(), tb = b.getFecha();
             if (ta == null && tb == null) return 0;
@@ -62,13 +57,12 @@ public class HistorialService {
 
     /** Marca un préstamo como DEVUELTO. */
     public boolean registrarDevolucion(int idPrestamo, long idUsuarioReceptor) throws SQLException {
-        // ASUNCIÓN: Tu tabla 'prestamos' tiene una columna llamada 'id_usuario_receptor_dev' (o similar).
         String sql = "UPDATE prestamos SET estado='DEVUELTO', fecha_devolucion=CURRENT_TIMESTAMP, " +
-                     "id_usuario_receptor_dev = ? " + // <-- SE AÑADE ESTO
+                     "id_usuario_receptor_dev = ? " + 
                      "WHERE id_prestamo=? AND estado='ENTREGADO'";
         try (Connection cn = DatabaseConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setLong(1, idUsuarioReceptor); // <-- Se establece el ID del receptor
+            ps.setLong(1, idUsuarioReceptor); 
             ps.setInt(2, idPrestamo);
             return ps.executeUpdate() > 0;
         }
@@ -96,10 +90,8 @@ public class HistorialService {
                     RegistroHistorial r = new RegistroHistorial();
                     r.setId(rs.getInt("id"));
                     r.setTipo("Solicitud");
-                    // usamos Timestamp para tener precisión si decides cambiar s.fecha a datetime
                     Timestamp fecha = null;
                     try { fecha = rs.getTimestamp("fecha"); } catch (SQLException ignore) {
-                        // si fecha es DATE, usa getDate y conviértelo
                         java.sql.Date d = rs.getDate("fecha");
                         if (d != null) fecha = new Timestamp(d.getTime());
                     }
@@ -122,13 +114,12 @@ public class HistorialService {
                 "SELECT p.id_prestamo AS id, p.estado, p.cantidad, " +
                 "       p.fecha_aprobacion, p.fecha_entrega, p.fecha_devolucion, " +
                 "       e.articulo AS insumo, u.nom_usuario AS solicitante, uj.nom_usuario AS aprobador, " +
-                "       ur.nom_usuario AS receptor_dev " + // <-- SE AÑADE ESTA COLUMNA
+                "       ur.nom_usuario AS receptor_dev " + 
                 "FROM prestamos p " +
                 "JOIN existencias e ON e.id = p.id_existencia " +
                 "JOIN solicitudes_insumos s ON s.id_solicitud = p.id_solicitud " +
                 "JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
                 "LEFT JOIN usuarios uj ON uj.usuario_id = s.id_usuario_jefe_inmediato " +
-                // --- SE AÑADE ESTE JOIN ---
                 "LEFT JOIN usuarios ur ON ur.usuario_id = p.id_usuario_receptor_dev " +
                 (filterSolicitante != null ? "WHERE s.id_usuario_solicitante = ? " : "") +
                 "ORDER BY COALESCE(p.fecha_devolucion, p.fecha_entrega, p.fecha_aprobacion) DESC, p.id_prestamo DESC";
@@ -152,7 +143,6 @@ public class HistorialService {
                     r.setNombreUsuario(rs.getString("solicitante"));
                     r.setEstado(rs.getString("estado"));
                     r.setNombreAprobador(rs.getString("aprobador"));
-                    // --- SE ASIGNA EL VALOR DEL RECEPTOR ---
                     r.setNombreReceptorDev(rs.getString("receptor_dev"));
                     list.add(r);
                 }

@@ -14,10 +14,11 @@ public class InventarioItem {
     private BigDecimal stockMaximos;
     private BigDecimal cantidadFisica;
     private Date estanciaEnStock;
+    private byte[] foto;
 
     public InventarioItem(int id, String marca, String articulo, String uso, String ubicacion,
                           BigDecimal stockInicial, BigDecimal stockMinimos, BigDecimal stockMaximos,
-                          BigDecimal cantidadFisica, Date estanciaEnStock) {
+                          BigDecimal cantidadFisica, Date estanciaEnStock, byte[] foto) {
         this.id = id;
         this.marca = marca;
         this.articulo = articulo;
@@ -28,6 +29,7 @@ public class InventarioItem {
         this.stockMaximos = stockMaximos;
         this.cantidadFisica = cantidadFisica;
         this.estanciaEnStock = estanciaEnStock;
+        this.foto = foto;
     }
 
     // Getters y Setters para todos los campos
@@ -51,4 +53,6 @@ public class InventarioItem {
     public void setCantidadFisica(BigDecimal cantidadFisica) { this.cantidadFisica = cantidadFisica; }
     public Date getEstanciaEnStock() { return estanciaEnStock; }
     public void setEstanciaEnStock(Date estanciaEnStock) { this.estanciaEnStock = estanciaEnStock; }
+    public byte[] getFoto() { return foto; }
+    public void setFoto(byte[] foto) { this.foto = foto; }
 }

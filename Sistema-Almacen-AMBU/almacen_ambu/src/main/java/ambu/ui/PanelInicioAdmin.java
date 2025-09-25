@@ -44,7 +44,6 @@ public class PanelInicioAdmin extends JPanel {
 
         // 3. CREACIÓN DEL MENÚ DE PESTAÑAS (IZQUIERDA)
         menuPestanas = new JTabbedPane(JTabbedPane.LEFT);
-        // ... (configuración de menuPestanas como la tenías) ...
         menuPestanas.setOpaque(false);
         menuPestanas.setForeground(Color.WHITE);
         menuPestanas.setFont(new Font("Arial", Font.BOLD, 14));
@@ -76,8 +75,6 @@ public class PanelInicioAdmin extends JPanel {
         cardLayout = new CardLayout();
         panelDerecho = new JPanel(cardLayout);
         panelDerecho.setOpaque(false);
-        
-        // ... (el resto de tu código para añadir paneles al cardLayout) ...
         PanelLogs panelLogs = new PanelLogs();
         panelDerecho.add(panelLogs, "Logs");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
@@ -103,7 +100,6 @@ public class PanelInicioAdmin extends JPanel {
 
         // 6. UNIÓN CON JSPLITPANE
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelIzquierdo, panelDerecho);
-        // ... (el resto de la configuración del splitPane como la tenías) ...
         splitPane.setOpaque(false);
         splitPane.setBorder(null);
         splitPane.setContinuousLayout(true);

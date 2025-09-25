@@ -11,7 +11,7 @@ public class RegistroHistorial {
     private String nombreUsuario; // Quien solicitó o registró la entrada
     private String estado; // "PENDIENTE","APROBADA","EN_PRESTAMO","ENTREGADO","DEVUELTO","RECHAZADA", etc.
     private String nombreAprobador; // Quien aprobó la solicitud
-    private String nombreReceptorDev; // Quien recibió la devolución (si se captura)
+    private String nombreReceptorDev; // Quien recibió la devolución 
 
     public RegistroHistorial() {}
 

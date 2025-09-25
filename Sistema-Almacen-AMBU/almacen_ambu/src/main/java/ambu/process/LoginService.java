@@ -11,7 +11,7 @@ import java.util.List;
 public class LoginService {
 
     public Usuario login(String username, String password) {
-        // CORRECTO
+
 String sql = "SELECT usuario_id, password_hash, nom_usuario, rol, activo FROM usuarios WHERE usuario = ? AND activo = 1";
         
         try (Connection conn = DatabaseConnection.getConnection();
@@ -24,7 +24,7 @@ String sql = "SELECT usuario_id, password_hash, nom_usuario, rol, activo FROM us
                 String storedHash = rs.getString("password_hash");
                 
                 if (BCrypt.checkpw(password, storedHash)) {
-                    // Contraseña correcta, creamos el objeto Usuario
+                    
                     return new Usuario(
                         rs.getLong("usuario_id"),
                         username,
@@ -109,7 +109,7 @@ String sql = "SELECT usuario_id, password_hash, nom_usuario, rol, activo FROM us
                 rs.getString("usuario"),
                 rs.getString("nom_usuario"),
                 rs.getString("rol"),
-                rs.getBoolean("activo") // <-- Añadimos el estado
+                rs.getBoolean("activo") 
             ));
         }
     } catch (SQLException e) {

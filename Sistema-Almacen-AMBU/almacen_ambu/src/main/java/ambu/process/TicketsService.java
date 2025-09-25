@@ -5,14 +5,9 @@ import java.sql.*;
 import java.util.*;
 import java.math.BigDecimal;
 
-/**
- * Servicio de Tickets / Préstamos para el almacén (compatible con Java 11).
- * - Usa POJOs en lugar de records.
- * - No usa switch expressions.
- */
+
 public class TicketsService {
 
-    // Conversión robusta para IDs (maneja BigInteger, BigDecimal, Integer, Long, etc.)
     private static Long toLong(Object o) {
         if (o == null) return null;
         if (o instanceof Number) return ((Number) o).longValue();
@@ -251,7 +246,7 @@ public class TicketsService {
             }
             try (PreparedStatement pi = cn.prepareStatement(insPrest)) {
                 pi.setInt(1, idSolicitud);
-                pi.executeUpdate(); // TRIGGER validará disponibilidad
+                pi.executeUpdate(); 
             }
             try (PreparedStatement pc = cn.prepareStatement(upCab)) {
                 pc.setLong(1, idAprobador);
