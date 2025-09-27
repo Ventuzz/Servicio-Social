@@ -123,14 +123,8 @@ public class RegistroInventarioDialog extends JDialog {
                 strictDateFormat.setLenient(false);
                 Date fechaIngresada = strictDateFormat.parse(fechaField.getText());
                 
-                // Formateamos ambas fechas a String para comparar solo el día, no la hora.
-                String fechaIngresadaStr = strictDateFormat.format(fechaIngresada);
-                String fechaHoyStr = strictDateFormat.format(new Date());
 
-                if (!fechaIngresadaStr.equals(fechaHoyStr)) {
-                    JOptionPane.showMessageDialog(this, "La fecha de estancia debe ser la fecha de hoy.", "Error de Fecha", JOptionPane.ERROR_MESSAGE);
-                    return; // Detiene el proceso
-                }
+
 
                 // Si todas las validaciones pasan, creamos el objeto y lo guardamos.
                 InventarioItem newItem = new InventarioItem(
