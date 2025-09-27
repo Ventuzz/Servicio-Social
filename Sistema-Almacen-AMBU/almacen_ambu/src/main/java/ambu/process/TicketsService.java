@@ -225,96 +225,191 @@ public class TicketsService {
         }
     }
 
-    public List<SolicitudResumen> listarSolicitudesPendientes() throws SQLException {
-        // Consulta SQL actualizada para obtener el nombre del solicitante
-        String sql = "SELECT s.id_solicitud, s.fecha, s.estado, " +
-                     "       COALESCE(u.nom_usuario, s.solicitante_externo) AS solicitante_nombre " +
-                     "FROM solicitudes_insumos s " +
-                     "LEFT JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
-                     "WHERE s.estado='PENDIENTE' OR s.estado IS NULL " +
-                     "ORDER BY COALESCE(s.creada_en, NOW()) DESC";
-        try (Connection cn = DatabaseConnection.getConnection();
-             PreparedStatement ps = cn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            List<SolicitudResumen> out = new ArrayList<>();
+    public List<Map<String, Object>> listarSolicitudesCabecera(long usuarioId, boolean esAdmin) throws SQLException {
+    List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+    String sql =
+        "SELECT " +
+        "  si.id_solicitud, " +
+        "  si.fecha, " +
+        "  si.estado, " +
+        "  COALESCE(NULLIF(TRIM(u.nom_usuario), ''), u.usuario, si.solicitante_externo) AS solicitante, " +
+        "  uj.nom_usuario AS jefe " +
+        "FROM solicitudes_insumos si " +
+        "LEFT JOIN usuarios u  ON u.usuario_id  = si.id_usuario_solicitante " +
+        "LEFT JOIN usuarios uj ON uj.usuario_id = si.id_usuario_jefe_inmediato " +
+        "WHERE ( si.id_usuario_solicitante = ? OR ( ? = 1 AND si.id_usuario_jefe_inmediato = ? ) ) " +
+        "ORDER BY si.fecha DESC";
+
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setLong(1, usuarioId);
+        ps.setInt(2, esAdmin ? 1 : 0);
+        ps.setLong(3, usuarioId);
+        try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                out.add(new SolicitudResumen(
-                    rs.getInt("id_solicitud"),
-                    rs.getDate("fecha"),
-                    rs.getString("estado"),
-                    rs.getString("solicitante_nombre") // Se pasa el nombre obtenido
-                ));
-            }
-            return out;
-        }
-    }
-
-    public List<DetalleSolicitud> listarDetallesSolicitud(int idSolicitud) throws SQLException {
-        String sql = "SELECT d.id_detalle, d.id_existencia, e.articulo, d.cantidad, d.unidad, d.observaciones " +
-                     "FROM solicitudes_insumos_detalle d " +
-                     "JOIN existencias e ON e.id = d.id_existencia " +
-                     "WHERE d.id_solicitud=?";
-        try (Connection cn = DatabaseConnection.getConnection();
-             PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setInt(1, idSolicitud);
-            try (ResultSet rs = ps.executeQuery()) {
-                List<DetalleSolicitud> out = new ArrayList<>();
-                while (rs.next()) {
-                    out.add(new DetalleSolicitud(
-                            rs.getInt("id_detalle"),
-                            rs.getInt("id_existencia"),
-                            rs.getString("articulo"),
-                            rs.getBigDecimal("cantidad"),
-                            rs.getString("unidad"),
-                            rs.getString("observaciones")
-                    ));
-                }
-                return out;
+                Map<String, Object> row = new LinkedHashMap<String, Object>();
+                row.put("idSolicitud", rs.getInt("id_solicitud"));
+                row.put("fecha",       rs.getTimestamp("fecha"));
+                row.put("estado",      rs.getString("estado"));
+                row.put("solicitante", rs.getString("solicitante"));
+                row.put("jefe",        rs.getString("jefe"));
+                out.add(row);
             }
         }
     }
-
-    public void aprobarSolicitud(int idSolicitud, Map<Integer, BigDecimal> aprobadasPorIdDetalle, long idAprobador) throws SQLException {
-        if (aprobadasPorIdDetalle == null || aprobadasPorIdDetalle.isEmpty())
-            throw new IllegalArgumentException("No se han indicado cantidades aprobadas.");
-
-        String upDet = "UPDATE solicitudes_insumos_detalle SET cantidad_aprobada=? WHERE id_detalle=?";
-        String insPrest = "INSERT INTO prestamos(id_solicitud,id_detalle,id_existencia,cantidad,estado) " +
-                          "SELECT d.id_solicitud,d.id_detalle,d.id_existencia,d.cantidad_aprobada,'APROBADO' " +
-                          "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud=? AND d.cantidad_aprobada>0";
-        String upCab = "UPDATE solicitudes_insumos SET estado='APROBADA', aprobada_en=CURRENT_TIMESTAMP, id_usuario_jefe_inmediato=? WHERE id_solicitud=?";
-        try (Connection cn = DatabaseConnection.getConnection()) {
-            cn.setAutoCommit(false);
-            try (PreparedStatement pu = cn.prepareStatement(upDet)) {
-                for (Map.Entry<Integer, BigDecimal> e : aprobadasPorIdDetalle.entrySet()) {
-                    pu.setBigDecimal(1, e.getValue());
-                    pu.setInt(2, e.getKey());
-                    pu.addBatch();
-                }
-                pu.executeBatch();
-            }
-            try (PreparedStatement pi = cn.prepareStatement(insPrest)) {
-                pi.setInt(1, idSolicitud);
-                pi.executeUpdate(); 
-            }
-            try (PreparedStatement pc = cn.prepareStatement(upCab)) {
-                pc.setLong(1, idAprobador);
-                pc.setInt(2, idSolicitud);
-                pc.executeUpdate();
+    return out;
 }
-            cn.commit();
-        }
-    }
 
-    public void rechazarSolicitud(int idSolicitud, String motivo) throws SQLException {
-        String sql = "UPDATE solicitudes_insumos SET estado='RECHAZADA', motivo_rechazo=?, aprobada_en=NULL WHERE id_solicitud=?";
-        try (Connection cn = DatabaseConnection.getConnection();
-             PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setString(1, motivo);
-            ps.setInt(2, idSolicitud);
-            ps.executeUpdate();
+public List<Map<String, Object>> listarDetallesSolicitud(int idSolicitud) throws SQLException {
+    List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+    String sql =
+        "SELECT " +
+        "  d.id_solicitud, " +
+        "  d.id_existencia, " +
+        "  e.articulo, " +
+        "  d.cantidad, " +
+        "  d.unidad, " +
+        "  d.observaciones " +
+        "FROM solicitudes_insumos_detalle d " +
+        "LEFT JOIN existencias e ON e.id_existencia = d.id_existencia " +
+        "WHERE d.id_solicitud = ? " +
+        "ORDER BY d.id_detalle ASC";
+
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setInt(1, idSolicitud);
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<String, Object>();
+                row.put("idSolicitud",   rs.getInt("id_solicitud"));
+                row.put("idExistencia",  rs.getInt("id_existencia"));
+                row.put("articulo",      rs.getString("articulo"));
+                // Si tu columna es DECIMAL, lee BigDecimal:
+                row.put("cantidad",      rs.getBigDecimal("cantidad"));
+                row.put("unidad",        rs.getString("unidad"));
+                row.put("observaciones", rs.getString("observaciones"));
+                out.add(row);
+            }
         }
     }
+    return out;
+}
+
+    public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLException {
+    Connection cn = null;
+    PreparedStatement ps = null;
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        // 1) Marcar cabecera como APROBADA (si estaba PENDIENTE)
+        String upCab = "UPDATE solicitudes_insumos "
+                     + "SET estado = 'APROBADA' "
+                     + "WHERE id_solicitud = ? AND (estado = 'PENDIENTE' OR estado IS NULL)";
+        ps = cn.prepareStatement(upCab);
+        ps.setInt(1, idSolicitud);
+        int updated = ps.executeUpdate();
+        ps.close();
+        if (updated == 0) {
+            cn.rollback();
+            return false; // ya estaba aprobada/rechazada u otro estado
+        }
+
+        // 2) Crear préstamos por cada renglón — si tu flujo crea 'prestamos' al aprobar
+        crearPrestamosDesdeSolicitud(cn, idSolicitud, adminId);
+
+        cn.commit();
+        return true;
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
+
+    public boolean rechazarPorTicket(int idSolicitud, long adminId, String motivo) throws SQLException {
+    Connection cn = null;
+    PreparedStatement ps = null;
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        String upCab = "UPDATE solicitudes_insumos "
+                     + "SET estado = 'RECHAZADA' "
+                     + "WHERE id_solicitud = ? AND (estado = 'PENDIENTE' OR estado IS NULL)";
+        ps = cn.prepareStatement(upCab);
+        ps.setInt(1, idSolicitud);
+        int updated = ps.executeUpdate();
+        ps.close();
+        if (updated == 0) {
+            cn.rollback();
+            return false;
+        }
+
+        // (Opcional) registra motivo en una bitácora si ya la tienes
+        // insertMotivoRechazo(cn, idSolicitud, adminId, motivo);
+
+        cn.commit();
+        return true;
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
+
+    public int agregarItemASolicitud(int idSolicitud, int idExistencia,
+                                 java.math.BigDecimal cantidad, String unidad, String obs) throws SQLException {
+    Connection cn = null;
+    PreparedStatement ps = null;
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        // Asegura que el ticket siga pendiente
+        String chk = "SELECT estado FROM solicitudes_insumos WHERE id_solicitud = ?";
+        ps = cn.prepareStatement(chk);
+        ps.setInt(1, idSolicitud);
+        java.sql.ResultSet rs = ps.executeQuery();
+        String estado = null;
+        if (rs.next()) estado = rs.getString(1);
+        rs.close(); ps.close();
+
+        if (estado != null && !"PENDIENTE".equalsIgnoreCase(estado)) {
+            cn.rollback();
+            throw new SQLException("No se puede agregar items a una solicitud en estado: " + estado);
+        }
+
+        String ins = "INSERT INTO solicitudes_insumos_detalle "
+                   + "(id_solicitud, id_existencia, cantidad, unidad, observaciones) "
+                   + "VALUES (?,?,?,?,?)";
+        ps = cn.prepareStatement(ins, java.sql.Statement.RETURN_GENERATED_KEYS);
+        ps.setInt(1, idSolicitud);
+        ps.setInt(2, idExistencia);
+        ps.setBigDecimal(3, cantidad);
+        ps.setString(4, unidad);
+        ps.setString(5, obs);
+        ps.executeUpdate();
+
+        int nuevoId = 0;
+        rs = ps.getGeneratedKeys();
+        if (rs.next()) nuevoId = rs.getInt(1);
+        rs.close(); ps.close();
+
+        cn.commit();
+        return nuevoId;
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
 
     // ---------- PRESTAMOS ----------
 
@@ -375,6 +470,43 @@ public class TicketsService {
             return out;
         }
     }
+
+    private void crearPrestamosDesdeSolicitud(Connection cn, int idSolicitud, long adminId) throws SQLException {
+    // Si tu flujo NO crea préstamos al aprobar, comenta este método.
+    // Aquí genero un préstamo por cada renglón (ajusta columnas de 'prestamos' a tu esquema real)
+    String sel = "SELECT d.id_existencia, d.cantidad "
+               + "FROM solicitudes_insumos_detalle d "
+               + "WHERE d.id_solicitud = ?";
+    String ins = "INSERT INTO prestamos "
+               + "(id_solicitud, id_existencia, cantidad, estado, fecha_aprobacion, id_usuario_aprobador) "
+               + "VALUES (?,?,?,?, NOW(), ?)";
+
+    PreparedStatement psSel = null, psIns = null;
+    java.sql.ResultSet rs = null;
+    try {
+        psSel = cn.prepareStatement(sel);
+        psSel.setInt(1, idSolicitud);
+        rs = psSel.executeQuery();
+
+        psIns = cn.prepareStatement(ins);
+        while (rs.next()) {
+            int idExistencia = rs.getInt("id_existencia");
+            java.math.BigDecimal cant = rs.getBigDecimal("cantidad");
+
+            psIns.setInt(1, idSolicitud);
+            psIns.setInt(2, idExistencia);
+            psIns.setBigDecimal(3, cant);
+            psIns.setString(4, "APROBADO"); // estado inicial del préstamo
+            psIns.setLong(5, adminId);
+            psIns.addBatch();
+        }
+        psIns.executeBatch();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (psSel != null) try { psSel.close(); } catch (SQLException ignore) {}
+        if (psIns != null) try { psIns.close(); } catch (SQLException ignore) {}
+    }
+}
 
     public void devolverPrestamo(int idPrestamo) throws SQLException {
         String sql = "UPDATE prestamos SET estado='DEVUELTO' WHERE id_prestamo=? AND estado='ENTREGADO'";

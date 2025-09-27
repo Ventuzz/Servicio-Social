@@ -1,6 +1,8 @@
 package ambu.ui;
 
 import ambu.models.Usuario;
+import ambu.process.TicketsService;
+
 import javax.swing.*;
 import java.awt.*;
 import ambu.models.Usuario; 
@@ -84,7 +86,7 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();
         panelDerecho.add(panelInventario, "Inventario");
-        PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId());
+        PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobaciones, "Aprobaciones");
         panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
 
