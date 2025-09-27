@@ -18,10 +18,12 @@ public class PanelInicioAdmin extends JPanel {
     private JPanel panelDerecho;
     private CardLayout cardLayout;
     private JSplitPane splitPane;
+    private Usuario usuario;
 
     // Constructor modificado para aceptar la acción de logout
     public PanelInicioAdmin(Usuario usuario, Runnable onLogout) {
-    
+        this.usuario = usuario;
+
         // 1. CONFIGURACIÓN INICIAL DEL PANEL
         setOpaque(false);
         setLayout(new BorderLayout(20, 20));
@@ -49,12 +51,12 @@ public class PanelInicioAdmin extends JPanel {
         menuPestanas.setFont(new Font("Arial", Font.BOLD, 14));
         menuPestanas.setUI(new CustomTabbedPaneUI());
         
-        menuPestanas.addTab("Actividad", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Registro Ticket", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Usuarios", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Inventario", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial", new JPanel() {{ setOpaque(false); }});
-        menuPestanas.setSelectedIndex(0);
+        
 
         // --- BOTÓN CERRAR SESIÓN ---
         JButton logoutButton = new JButton("Cerrar Sesión");
@@ -75,8 +77,9 @@ public class PanelInicioAdmin extends JPanel {
         cardLayout = new CardLayout();
         panelDerecho = new JPanel(cardLayout);
         panelDerecho.setOpaque(false);
-        PanelLogs panelLogs = new PanelLogs();
-        panelDerecho.add(panelLogs, "Logs");
+
+        PanelTicketAdmin panelTicketAdmin = new PanelTicketAdmin(usuario.getId());
+        panelDerecho.add(panelTicketAdmin, "Registro Ticket");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();
@@ -90,7 +93,7 @@ public class PanelInicioAdmin extends JPanel {
             int indiceSeleccionado = menuPestanas.getSelectedIndex();
             String tituloPestana = menuPestanas.getTitleAt(indiceSeleccionado);
             switch (tituloPestana) {
-                case "Actividad": cardLayout.show(panelDerecho, "Logs"); break;
+                case "Registro Ticket": cardLayout.show(panelDerecho, "Registro Ticket"); break;
                 case "Usuarios": cardLayout.show(panelDerecho, "Usuarios"); break;
                 case "Inventario": cardLayout.show(panelDerecho, "Inventario"); break;
                 case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;

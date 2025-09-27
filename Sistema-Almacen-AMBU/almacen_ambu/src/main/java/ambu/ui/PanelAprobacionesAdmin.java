@@ -448,7 +448,7 @@ public class PanelAprobacionesAdmin extends JPanel {
                 case 0: return x.getIdSolicitud();
                 case 1: return x.getFecha();
                 case 2: return x.getEstado() == null ? "PENDIENTE" : x.getEstado();
-                case 3: return x.getIdSolicitante();
+                case 3: return x.getSolicitanteNombre();
                 default: return "";
             }
         }

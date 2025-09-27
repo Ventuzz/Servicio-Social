@@ -125,7 +125,6 @@ public class RegistroInventarioDialog extends JDialog {
                 
 
 
-
                 // Si todas las validaciones pasan, creamos el objeto y lo guardamos.
                 InventarioItem newItem = new InventarioItem(
                     0,

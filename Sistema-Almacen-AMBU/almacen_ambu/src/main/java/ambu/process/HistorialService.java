@@ -35,9 +35,26 @@ public class HistorialService {
         return out;
     }
     
+    public List<RegistroHistorial> listarUnificado(long usuarioId, boolean esAdmin) throws SQLException {
+    try (Connection cn = DatabaseConnection.getConnection()) {
+        List<RegistroHistorial> out = new ArrayList<>();
+        out.addAll(querySolicitudes(cn, usuarioId));
+        out.addAll(queryPrestamos(cn, usuarioId));
+        // Ordena por fecha DESC (null al final)
+        out.sort((a,b) -> {
+            Timestamp ta = a.getFecha(), tb = b.getFecha();
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+        });
+        return out;
+    }
+}
+
 
     /** Historial filtrado por solicitante (usuario_id). */
-    public List<RegistroHistorial> obtenerHistorialPorUsuario(long idUsuario) throws SQLException {
+        public List<RegistroHistorial> obtenerHistorialPorUsuario(long idUsuario) throws SQLException {
         List<RegistroHistorial> out = new ArrayList<>();
         try (Connection cn = DatabaseConnection.getConnection()) {
             out.addAll(querySolicitudes(cn, idUsuario));
@@ -73,12 +90,13 @@ public class HistorialService {
     private List<RegistroHistorial> querySolicitudes(Connection cn, Long filterSolicitante) throws SQLException {
         String sql =
                 "SELECT s.id_solicitud AS id, s.fecha, s.estado, " +
-                "       u.nom_usuario AS solicitante, uj.nom_usuario AS aprobador, " +
+                "       COALESCE(u.nom_usuario, s.solicitante_externo) AS solicitante, " +
+                "       uj.nom_usuario AS aprobador, " +
                 "       e.articulo AS insumo, d.cantidad AS cantidad " +
                 "FROM solicitudes_insumos s " +
                 "JOIN solicitudes_insumos_detalle d ON d.id_solicitud = s.id_solicitud " +
                 "JOIN existencias e ON e.id = d.id_existencia " +
-                "JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
+                "LEFT JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
                 "LEFT JOIN usuarios uj ON uj.usuario_id = s.id_usuario_jefe_inmediato " +
                 (filterSolicitante != null ? "WHERE s.id_usuario_solicitante = ? " : "") +
                 "ORDER BY s.fecha DESC, s.id_solicitud DESC";
@@ -98,7 +116,7 @@ public class HistorialService {
                     r.setFecha(fecha);
                     r.setNombreInsumo(rs.getString("insumo"));
                     r.setCantidad(rs.getObject("cantidad") == null ? 0 : rs.getInt("cantidad"));
-                    r.setNombreUsuario(rs.getString("solicitante"));
+                    r.setNombreUsuario(rs.getString("solicitante")); // <-- Ya obtiene el nombre unificado
                     r.setEstado(rs.getString("estado"));
                     r.setNombreAprobador(rs.getString("aprobador"));
                     r.setNombreReceptorDev(null);
@@ -113,12 +131,12 @@ public class HistorialService {
         String sql =
                 "SELECT p.id_prestamo AS id, p.estado, p.cantidad, " +
                 "       p.fecha_aprobacion, p.fecha_entrega, p.fecha_devolucion, " +
-                "       e.articulo AS insumo, u.nom_usuario AS solicitante, uj.nom_usuario AS aprobador, " +
-                "       ur.nom_usuario AS receptor_dev " + 
+                "       e.articulo AS insumo, COALESCE(u.nom_usuario, s.solicitante_externo) AS solicitante, " +
+                "       uj.nom_usuario AS aprobador, ur.nom_usuario AS receptor_dev " + 
                 "FROM prestamos p " +
                 "JOIN existencias e ON e.id = p.id_existencia " +
                 "JOIN solicitudes_insumos s ON s.id_solicitud = p.id_solicitud " +
-                "JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
+                "LEFT JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
                 "LEFT JOIN usuarios uj ON uj.usuario_id = s.id_usuario_jefe_inmediato " +
                 "LEFT JOIN usuarios ur ON ur.usuario_id = p.id_usuario_receptor_dev " +
                 (filterSolicitante != null ? "WHERE s.id_usuario_solicitante = ? " : "") +
@@ -140,7 +158,7 @@ public class HistorialService {
                     r.setFecha(fecha);
                     r.setNombreInsumo(rs.getString("insumo"));
                     r.setCantidad(rs.getObject("cantidad") == null ? 0 : rs.getInt("cantidad"));
-                    r.setNombreUsuario(rs.getString("solicitante"));
+                    r.setNombreUsuario(rs.getString("solicitante")); // <-- Ya obtiene el nombre unificado
                     r.setEstado(rs.getString("estado"));
                     r.setNombreAprobador(rs.getString("aprobador"));
                     r.setNombreReceptorDev(rs.getString("receptor_dev"));
@@ -150,5 +168,5 @@ public class HistorialService {
         }
         return list;
     }
-
 }
+

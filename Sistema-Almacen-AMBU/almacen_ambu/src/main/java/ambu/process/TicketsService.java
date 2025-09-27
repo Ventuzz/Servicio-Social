@@ -58,17 +58,18 @@ public class TicketsService {
         private final int idSolicitud;
         private final java.sql.Date fecha;
         private final String estado;
-        private final Long idSolicitante;
-        public SolicitudResumen(int idSolicitud, java.sql.Date fecha, String estado, Long idSolicitante) {
+        private final String solicitanteNombre;
+
+        public SolicitudResumen(int idSolicitud, java.sql.Date fecha, String estado, String solicitanteNombre) {
             this.idSolicitud = idSolicitud;
             this.fecha = fecha;
             this.estado = estado;
-            this.idSolicitante = idSolicitante;
+            this.solicitanteNombre = solicitanteNombre;
         }
         public int getIdSolicitud() { return idSolicitud; }
         public java.sql.Date getFecha() { return fecha; }
         public String getEstado() { return estado; }
-        public Long getIdSolicitante() { return idSolicitante; }
+        public String getSolicitanteNombre() { return solicitanteNombre; }
     }
 
     public static class DetalleSolicitud {
@@ -185,16 +186,64 @@ public class TicketsService {
 
     // ---------- SOLICITUDES (ADMIN) ----------
 
+    public int crearSolicitudExterna(String nombreSolicitante, Long idJefe, List<ItemSolicitado> items) throws SQLException {
+        if (nombreSolicitante == null || nombreSolicitante.isBlank())
+            throw new IllegalArgumentException("El nombre del solicitante es requerido.");
+        if (items == null || items.isEmpty())
+            throw new IllegalArgumentException("La solicitud no tiene items.");
+
+        String insCab = "INSERT INTO solicitudes_insumos(fecha, id_usuario_solicitante, solicitante_externo, id_usuario_jefe_inmediato) " +
+                        "VALUES (CURRENT_DATE, NULL, ?, ?)";
+        String insDet = "INSERT INTO solicitudes_insumos_detalle(id_solicitud, id_existencia, cantidad, unidad, observaciones) VALUES (?,?,?,?,?)";
+
+        try (Connection cn = DatabaseConnection.getConnection()) {
+            cn.setAutoCommit(false);
+            try (PreparedStatement pc = cn.prepareStatement(insCab, Statement.RETURN_GENERATED_KEYS)) {
+                pc.setString(1, nombreSolicitante);
+                if (idJefe == null) pc.setNull(2, Types.BIGINT); else pc.setLong(2, idJefe);
+                pc.executeUpdate();
+                int idSolicitud;
+                try (ResultSet rs = pc.getGeneratedKeys()) { rs.next(); idSolicitud = rs.getInt(1); }
+
+                try (PreparedStatement pd = cn.prepareStatement(insDet)) {
+                    for (ItemSolicitado it : items) {
+                        pd.setInt(1, idSolicitud);
+                        pd.setInt(2, it.getIdExistencia());
+                        pd.setBigDecimal(3, it.getCantidad());
+                        pd.setString(4, it.getUnidad());
+                        pd.setString(5, it.getObs());
+                        pd.addBatch();
+                    }
+                    pd.executeBatch();
+                }
+                cn.commit();
+                return idSolicitud;
+            } catch (SQLException ex) {
+                cn.rollback();
+                throw ex;
+            }
+        }
+    }
+
     public List<SolicitudResumen> listarSolicitudesPendientes() throws SQLException {
-        String sql = "SELECT id_solicitud, fecha, estado, id_usuario_solicitante " +
-                     "FROM solicitudes_insumos WHERE estado='PENDIENTE' OR estado IS NULL " +
-                     "ORDER BY COALESCE(creada_en, NOW()) DESC";
+        // Consulta SQL actualizada para obtener el nombre del solicitante
+        String sql = "SELECT s.id_solicitud, s.fecha, s.estado, " +
+                     "       COALESCE(u.nom_usuario, s.solicitante_externo) AS solicitante_nombre " +
+                     "FROM solicitudes_insumos s " +
+                     "LEFT JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
+                     "WHERE s.estado='PENDIENTE' OR s.estado IS NULL " +
+                     "ORDER BY COALESCE(s.creada_en, NOW()) DESC";
         try (Connection cn = DatabaseConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             List<SolicitudResumen> out = new ArrayList<>();
             while (rs.next()) {
-                out.add(new SolicitudResumen(rs.getInt("id_solicitud"), rs.getDate("fecha"), rs.getString("estado"), toLong(rs.getObject("id_usuario_solicitante"))));
+                out.add(new SolicitudResumen(
+                    rs.getInt("id_solicitud"),
+                    rs.getDate("fecha"),
+                    rs.getString("estado"),
+                    rs.getString("solicitante_nombre") // Se pasa el nombre obtenido
+                ));
             }
             return out;
         }
