@@ -157,8 +157,8 @@ public class PanelHistorial extends JPanel {
         RegistroHistorial registro = tableModel.getDatoEnFila(filaSeleccionada);
 
 
-        if (!"Préstamo".equalsIgnoreCase(registro.getTipo()) || !"ENTREGADO".equalsIgnoreCase(registro.getEstado())) {
-            JOptionPane.showMessageDialog(this, "Solo se pueden devolver préstamos con estado 'ENTREGADO'.", "Acción no válida", JOptionPane.ERROR_MESSAGE);
+        if (!"Préstamo".equalsIgnoreCase(registro.getTipo()) || !"APROBADO".equalsIgnoreCase(registro.getEstado())) {
+            JOptionPane.showMessageDialog(this, "Solo se pueden devolver préstamos con estado 'APROBADO'.", "Acción no válida", JOptionPane.ERROR_MESSAGE);
             return;
         }
 

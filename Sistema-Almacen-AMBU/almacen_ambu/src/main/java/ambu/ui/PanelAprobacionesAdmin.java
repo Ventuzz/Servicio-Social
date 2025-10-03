@@ -31,22 +31,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/**
- * Panel de Aprobaciones (Java 11)
- * - Aprobación por ticket (cabecera) completo
- * - Rechazo por ticket
- * - Agregar insumos a ticket PENDIENTE (admin)
- * - Listado de cabeceras + detalle con filtro de texto
- *
- * NOTAS de integración:
- * - Requiere que TicketsService tenga:
- *   - boolean aprobarPorTicket(int idSolicitud, long adminId)
- *   - boolean rechazarPorTicket(int idSolicitud, long adminId, String motivo)
- *   - int     agregarItemASolicitud(int idSolicitud, int idExistencia, BigDecimal cantidad, String unidad, String obs)
- *   - List<?> listarSolicitudesCabecera(long usuarioId, boolean esAdmin)
- *   - List<?> listarDetallesSolicitud(int idSolicitud)
- *   Si tus nombres difieren, ajusta las llamadas dentro de este panel en los métodos cargarCabeceras() y cargarDetalles(int).
- */
+
 public class PanelAprobacionesAdmin extends JPanel {
 
     private final TicketsService service;
@@ -64,6 +49,7 @@ public class PanelAprobacionesAdmin extends JPanel {
     private JButton btnRechazar;
     private JButton btnAgregar;
     private JButton btnRefrescar;
+    private JButton btnCerrar;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
@@ -116,10 +102,45 @@ public class PanelAprobacionesAdmin extends JPanel {
         btnAprobar = new JButton(new AbstractAction("Aprobar ticket") {
             @Override public void actionPerformed(ActionEvent e) { onAprobar(); }
         });
+
+        btnCerrar = new JButton(new AbstractAction("Cerrar ticket") {
+    @Override public void actionPerformed(ActionEvent e) {
+        Integer id = getSolicitudSeleccionada();
+        if (id == null) {
+            JOptionPane.showMessageDialog(PanelAprobacionesAdmin.this, "Selecciona un ticket.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int r = JOptionPane.showConfirmDialog(PanelAprobacionesAdmin.this,
+                "¿Cerrar la solicitud #" + id + "?\n(No se podrán hacer más modificaciones)", 
+                "Confirmar", JOptionPane.YES_NO_OPTION);
+        if (r != JOptionPane.YES_OPTION) return;
+
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() throws Exception {
+                return service.cerrarTicket(id, adminUsuarioId);
+            }
+            @Override protected void done() {
+                try {
+                    boolean ok = get();
+                    if (ok) {
+                        JOptionPane.showMessageDialog(PanelAprobacionesAdmin.this, "Ticket cerrado.");
+                        cargarCabeceras();
+                        cargarDetalles(id);
+                    } else {
+                        JOptionPane.showMessageDialog(PanelAprobacionesAdmin.this, "No se pudo cerrar (verifica estado).", "Aviso", JOptionPane.WARNING_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(PanelAprobacionesAdmin.this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+});
         acciones.add(btnRefrescar);
         acciones.add(btnAgregar);
         acciones.add(btnRechazar);
         acciones.add(btnAprobar);
+        acciones.add(btnCerrar);
         top.add(acciones, BorderLayout.SOUTH);
 
         split.setTopComponent(top);
@@ -145,6 +166,7 @@ public class PanelAprobacionesAdmin extends JPanel {
             if (!e.getValueIsAdjusting()) {
                 Integer id = getSolicitudSeleccionada();
                 if (id != null) cargarDetalles(id);
+                actualizarBotonesPorSeleccion();
             }
         });
     }
@@ -170,6 +192,31 @@ public class PanelAprobacionesAdmin extends JPanel {
     }
 
     // ---------------------- Acciones ----------------------
+    private void actualizarBotonesPorSeleccion() {
+        Integer id = getSolicitudSeleccionada();
+        String estado = null;
+        if (id != null) {
+            int row = tblCabeceras.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = tblCabeceras.convertRowIndexToModel(row);
+                estado = (String) cabeceraModel.getValueAt(modelRow, 2); // col 2 = Estado
+            }
+        }
+        String st = estado == null ? "" : estado.trim().toUpperCase();
+
+        // Reglas:
+        // - Aprobar/Rechazar: solo si está PENDIENTE
+        boolean esPend = "PENDIENTE".equals(st) || st.isEmpty();
+        btnAprobar.setEnabled(esPend);
+        btnRechazar.setEnabled(esPend);
+
+        // - Cerrar: todo menos CERRADO y RECHAZADA
+        btnCerrar.setEnabled(!"CERRADO".equals(st) && !"RECHAZADA".equals(st));
+
+        // - Agregar insumo: permitido en PENDIENTE y APROBADA; bloqueado en CERRADO/RECHAZADA
+        btnAgregar.setEnabled(!"CERRADO".equals(st) && !"RECHAZADA".equals(st));
+    }
+
     private void onAprobar() {
         Integer id = getSolicitudSeleccionada();
         if (id == null) {
@@ -232,6 +279,17 @@ public class PanelAprobacionesAdmin extends JPanel {
             JOptionPane.showMessageDialog(this, "Selecciona un ticket.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        int viewRow = tblCabeceras.getSelectedRow();
+        String estado = null;
+        if (viewRow >= 0) {
+            int modelRow = tblCabeceras.convertRowIndexToModel(viewRow);
+            estado = (String) cabeceraModel.getValueAt(modelRow, 2); // col 2 = Estado
+        }
+        String st = estado == null ? "" : estado.trim().toUpperCase();
+        if ("CERRADO".equals(st) || "RECHAZADA".equals(st)) {
+            JOptionPane.showMessageDialog(this, "El ticket está " + st + ". No se puede modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         // Se espera que tengas un JDialog AgregarInsumo con este constructor/callback (ajústalo si tu clase difiere):
         AgregarInsumo dlg = new AgregarInsumo(SwingUtilities.getWindowAncestor(this), id, (idExistencia, cantidad, unidad, obs) -> {
@@ -273,6 +331,7 @@ public class PanelAprobacionesAdmin extends JPanel {
                     cabeceraModel.setData(rows);
                     if (!rows.isEmpty()) {
                         tblCabeceras.setRowSelectionInterval(0, 0);
+                        actualizarBotonesPorSeleccion();
                     }
                     btnAprobar.setEnabled(true);
                     btnRechazar.setEnabled(true);

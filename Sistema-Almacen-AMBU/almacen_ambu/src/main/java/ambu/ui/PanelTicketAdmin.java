@@ -162,27 +162,34 @@ public class PanelTicketAdmin extends JPanel {
     }
 
     private void agregarAlCarrito() {
-        int viewRow = tblDisponibles.getSelectedRow();
-        if (viewRow < 0) { showWarn("Selecciona un artículo disponible."); return; }
-        int modelRow = tblDisponibles.convertRowIndexToModel(viewRow);
-        DisponibleItem d = disponiblesModel.data.get(modelRow);
+    int viewRow = tblDisponibles.getSelectedRow();
+    if (viewRow < 0) { showWarn("Selecciona un artículo disponible."); return; }
+    int modelRow = tblDisponibles.convertRowIndexToModel(viewRow);
+    DisponibleItem d = disponiblesModel.data.get(modelRow);
 
-        BigDecimal cant;
-        try {
-            cant = new BigDecimal(txtCantidad.getText().trim());
-            if (cant.compareTo(BigDecimal.ZERO) <= 0) throw new NumberFormatException();
-        } catch (Exception ex) {
-            showWarn("Cantidad inválida."); return;
-        }
-        String unidad = txtUnidad.getText().trim();
-        if (unidad.isEmpty()) { showWarn("Indica la unidad."); return; }
-        String obs = txtObs.getText().trim();
-
-        carritoModel.add(new CarritoItem(d.getIdExistencia(), d.getArticulo(), cant, unidad, obs));
-        txtCantidad.setText("");
-        txtUnidad.setText("");
-        txtObs.setText("");
+    BigDecimal cant;
+    try {
+        cant = new BigDecimal(txtCantidad.getText().trim());
+        if (cant.compareTo(BigDecimal.ZERO) <= 0) throw new NumberFormatException();
+    } catch (Exception ex) {
+        showWarn("Cantidad inválida."); return;
     }
+    String unidad = txtUnidad.getText().trim();
+    if (unidad.isEmpty()) { showWarn("Indica la unidad."); return; }
+
+    String obs = txtObs.getText().trim();
+    // *** NUEVO: observaciones obligatorias ***
+    if (obs.isEmpty()) {
+        showWarn("Las observaciones son obligatorias.");
+        txtObs.requestFocus();
+        return;
+    }
+
+    carritoModel.add(new CarritoItem(d.getIdExistencia(), d.getArticulo(), cant, unidad, obs));
+    txtCantidad.setText("");
+    txtUnidad.setText("");
+    txtObs.setText("");
+}
 
     private void quitarDelCarrito() {
         int row = tblCarrito.getSelectedRow();
