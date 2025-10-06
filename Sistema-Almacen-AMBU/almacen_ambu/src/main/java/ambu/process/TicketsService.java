@@ -476,24 +476,12 @@ public class TicketsService {
         cn = DatabaseConnection.getConnection();
         cn.setAutoCommit(false);
 
-        String estado = null;
-        try (PreparedStatement chk = cn.prepareStatement(
-                "SELECT estado FROM solicitudes_insumos WHERE id_solicitud=? FOR UPDATE")) {
-            chk.setInt(1, idSolicitud);
-            try (ResultSet r = chk.executeQuery()) { if (r.next()) estado = r.getString(1); }
-        }
-        if (estado != null) {
-            String st = estado.trim().toUpperCase();
-            if ("CERRADA".equals(st) || "RECHAZADA".equals(st)) {
-                cn.rollback();
-                throw new SQLException("No se puede modificar la solicitud en estado: " + estado);
-            }
-        }
-
+        // 1) Insertar el detalle (misma sentencia que ya usabas)
         ps = cn.prepareStatement(
-                "INSERT INTO solicitudes_insumos_detalle " +
-                "(id_solicitud, id_existencia, cantidad, unidad, observaciones) VALUES (?,?,?,?,?)",
-                Statement.RETURN_GENERATED_KEYS);
+            "INSERT INTO solicitudes_insumos_detalle " +
+            "(id_solicitud, id_existencia, cantidad, unidad, observaciones) VALUES (?,?,?,?,?)",
+            Statement.RETURN_GENERATED_KEYS
+        );
         ps.setInt(1, idSolicitud);
         ps.setInt(2, idExistencia);
         ps.setBigDecimal(3, cantidad);
@@ -504,6 +492,41 @@ public class TicketsService {
         int nuevoId = 0;
         rs = ps.getGeneratedKeys();
         if (rs.next()) nuevoId = rs.getInt(1);
+        rs.close(); ps.close();
+
+        // 2) Si la solicitud ya está aprobada/entregada/en préstamo, entregar en automático
+        String estado = null;
+        try (PreparedStatement st = cn.prepareStatement(
+                "SELECT estado FROM solicitudes_insumos WHERE id_solicitud=?")) {
+            st.setInt(1, idSolicitud);
+            try (ResultSet r = st.executeQuery()) {
+                if (r.next()) estado = r.getString(1);
+            }
+        }
+
+        if ("APROBADA".equalsIgnoreCase(estado) ||
+            "EN_PRESTAMO".equalsIgnoreCase(estado) ||
+            "ENTREGADA".equalsIgnoreCase(estado)) {
+            // Insertar préstamo ENTREGADO para el nuevo renglón
+            try (PreparedStatement pi = cn.prepareStatement(
+                "INSERT INTO prestamos (id_solicitud, id_detalle, id_existencia, cantidad, estado, fecha_aprobacion, fecha_entrega) " +
+                "VALUES (?,?,?,?, 'ENTREGADO', NOW(), NOW())")) {
+                pi.setInt(1, idSolicitud);
+                pi.setInt(2, nuevoId);
+                pi.setInt(3, idExistencia);
+                pi.setBigDecimal(4, cantidad); // o calcula según tu lógica de aprobado
+                pi.executeUpdate();
+            }
+
+            // Asegurar marcas de entrega si aún no estaban
+            try (PreparedStatement up = cn.prepareStatement(
+                "UPDATE solicitudes_insumos " +
+                "SET estado='EN_PRESTAMO', entregada_en=COALESCE(entregada_en, CURRENT_TIMESTAMP) " +
+                "WHERE id_solicitud=?")) {
+                up.setInt(1, idSolicitud);
+                up.executeUpdate();
+            }
+        }
 
         cn.commit();
         return nuevoId;
@@ -525,22 +548,30 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
         cn = DatabaseConnection.getConnection();
         cn.setAutoCommit(false);
 
-        // Cambia a APROBADA solo si venía de PENDIENTE (o NULL)
+        // Aprueba y (ahora) entrega en el mismo paso:
         ps = cn.prepareStatement(
             "UPDATE solicitudes_insumos " +
-            "SET estado='APROBADA', aprobada_en=CURRENT_TIMESTAMP, id_usuario_jefe_inmediato=? " +
-            "WHERE id_solicitud=? AND (estado='PENDIENTE' OR estado IS NULL)");
+            "SET estado='EN_PRESTAMO', " + // pasa a EN_PRESTAMO porque ya se entrega
+            "    aprobada_en=COALESCE(aprobada_en, CURRENT_TIMESTAMP), " +
+            "    entregada_en=CURRENT_TIMESTAMP, " +
+            "    id_usuario_jefe_inmediato=?, " +
+            "    id_usuario_entrega=? " +
+            "WHERE id_solicitud=? AND (estado='PENDIENTE' OR estado='APROBADA' OR estado IS NULL)"
+        );
         ps.setLong(1, adminId);
-        ps.setInt(2, idSolicitud);
+        ps.setLong(2, adminId); // quien aprueba también entrega (ajusta si usas otro usuario)
+        ps.setInt(3, idSolicitud);
         int upd = ps.executeUpdate();
         ps.close();
         if (upd == 0) { cn.rollback(); return false; }
 
-        // Genera préstamos por cada renglón de detalle (NO inserta en detalle)
+        // Genera préstamos ya ENTREGADOS (usa cantidad_aprobada si existe)
         try (PreparedStatement pi = cn.prepareStatement(
-                "INSERT INTO prestamos (id_solicitud, id_detalle, id_existencia, cantidad, estado, fecha_aprobacion) " +
-                "SELECT d.id_solicitud, d.id_detalle, d.id_existencia, d.cantidad, 'APROBADO', NOW() " +
-                "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud = ?")) {
+            "INSERT INTO prestamos (id_solicitud, id_detalle, id_existencia, cantidad, estado, fecha_aprobacion, fecha_entrega) " +
+            "SELECT d.id_solicitud, d.id_detalle, d.id_existencia, COALESCE(d.cantidad_aprobada, d.cantidad), " +
+            "       'ENTREGADO', NOW(), NOW() " +
+            "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud = ?"
+        )) {
             pi.setInt(1, idSolicitud);
             pi.executeUpdate();
         }
@@ -555,6 +586,7 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
         if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
     }
 }
+
 
 
 public boolean rechazarPorTicket(int idSolicitud, long adminId, String motivo) throws SQLException {
@@ -592,6 +624,87 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
         }
     }
 
+    public boolean registrarDevolucionParcial(int idPrestamo, BigDecimal cantDev, long idUsuarioReceptor) throws SQLException {
+    cantDev = cantDev.setScale(3, java.math.RoundingMode.DOWN);
+
+    try (Connection cn = DatabaseConnection.getConnection()) {
+        cn.setAutoCommit(false);
+
+        // 1. Obtener estado actual (sin cambios)
+        BigDecimal cantidadTotalPrestada = BigDecimal.ZERO;
+        BigDecimal cantidadYaDevuelta = BigDecimal.ZERO;
+        String estadoActual = null;
+
+        try (PreparedStatement ps = cn.prepareStatement(
+            "SELECT cantidad, cantidad_devuelta, estado FROM prestamos WHERE id_prestamo=? FOR UPDATE")) {
+            ps.setInt(1, idPrestamo);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    cn.rollback();
+                    return false; // El préstamo no existe
+                }
+                cantidadTotalPrestada = rs.getBigDecimal(1);
+                // Si la cantidad devuelta es NULL en la BD, la tratamos como 0
+                cantidadYaDevuelta = rs.getBigDecimal(2) == null ? BigDecimal.ZERO : rs.getBigDecimal(2);
+                estadoActual = rs.getString(3);
+            }
+        }
+
+        // 2. Validaciones (sin cambios)
+        if (!"ENTREGADO".equalsIgnoreCase(estadoActual)) {
+            cn.rollback();
+            throw new SQLException("Solo se pueden devolver préstamos en estado ENTREGADO.");
+        }
+
+        BigDecimal pendiente = cantidadTotalPrestada.subtract(cantidadYaDevuelta);
+        if (cantDev.compareTo(BigDecimal.ZERO) <= 0) {
+            cn.rollback();
+            throw new SQLException("La cantidad a devolver debe ser mayor a 0.");
+        }
+        if (cantDev.compareTo(pendiente) > 0) {
+            cn.rollback();
+            throw new SQLException("No puedes devolver más de lo pendiente (" + pendiente + ").");
+        }
+
+        // --- 3. CALCULAR NUEVOS VALORES EN JAVA (Lógica corregida) ---
+        BigDecimal nuevaCantidadDevuelta = cantidadYaDevuelta.add(cantDev);
+        
+        // Comparamos si la nueva cantidad devuelta es igual o mayor a la total prestada
+        boolean esDevolucionCompleta = nuevaCantidadDevuelta.compareTo(cantidadTotalPrestada) >= 0;
+        
+        // Determinamos el nuevo estado del préstamo
+        String nuevoEstado = esDevolucionCompleta ? "DEVUELTO" : "ENTREGADO";
+
+        // --- 4. EJECUTAR UN UPDATE SIMPLE Y DIRECTO ---
+        String sqlUpdate = "UPDATE prestamos SET " +
+                           "  cantidad_devuelta = ?, " +
+                           "  estado = ?, " +
+                           "  fecha_devolucion = NOW(), " + // Siempre actualizamos la fecha de la última devolución
+                           "  id_usuario_receptor_dev = ? " +
+                           "WHERE id_prestamo = ?";
+                           
+        try (PreparedStatement up = cn.prepareStatement(sqlUpdate)) {
+            up.setBigDecimal(1, nuevaCantidadDevuelta); // El nuevo total devuelto
+            up.setString(2, nuevoEstado);              // El nuevo estado ('DEVUELTO' o 'ENTREGADO')
+            up.setLong(3, idUsuarioReceptor);
+            up.setInt(4, idPrestamo);
+            up.executeUpdate();
+        }
+
+        cn.commit();
+        return true;
+    } catch (SQLException e) {
+        // En caso de error, siempre hacer rollback
+        try (Connection cn = DatabaseConnection.getConnection()) {
+            if (cn != null && !cn.getAutoCommit()) {
+                cn.rollback();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace(); // Log del error de rollback
+        }
+        throw e; // Relanzar la excepción original
+    }
+}
     
 
 }

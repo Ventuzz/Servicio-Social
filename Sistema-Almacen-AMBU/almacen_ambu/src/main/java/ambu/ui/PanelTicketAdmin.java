@@ -91,6 +91,10 @@ public class PanelTicketAdmin extends JPanel {
         pHeader.add(campoBusqueda, BorderLayout.CENTER);
         pDisp.add(pHeader, BorderLayout.NORTH);
 
+        JButton btnRefrescar = new JButton("Refrescar");
+        btnRefrescar.addActionListener(e -> cargarDisponiblesAsync());
+        pHeader.add(btnRefrescar, BorderLayout.EAST);
+
         disponiblesModel = new DisponiblesTableModel();
         tblDisponibles = new JTable(disponiblesModel);
         sorter = new TableRowSorter<>(disponiblesModel);

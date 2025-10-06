@@ -99,7 +99,6 @@ public final class AgregarInsumo extends JDialog {
         tblDisponibles.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         sorter = new TableRowSorter<>(disponiblesModel);
         tblDisponibles.setRowSorter(sorter);
-        tblDisponibles.setAutoCreateRowSorter(true);
         tblDisponibles.setRowHeight(22);
         JScrollPane spDisp = new JScrollPane(tblDisponibles);
         pLeft.add(spDisp, BorderLayout.CENTER);

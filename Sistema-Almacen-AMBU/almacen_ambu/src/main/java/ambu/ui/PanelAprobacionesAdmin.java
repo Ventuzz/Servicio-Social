@@ -50,6 +50,7 @@ public class PanelAprobacionesAdmin extends JPanel {
     private JButton btnAgregar;
     private JButton btnRefrescar;
     private JButton btnCerrar;
+    private JButton btnEntregar;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
@@ -210,11 +211,11 @@ public class PanelAprobacionesAdmin extends JPanel {
         btnAprobar.setEnabled(esPend);
         btnRechazar.setEnabled(esPend);
 
-        // - Cerrar: todo menos CERRADO y RECHAZADA
-        btnCerrar.setEnabled(!"CERRADO".equals(st) && !"RECHAZADA".equals(st));
+        // - Cerrar: todo menos CERRADA y RECHAZADA
+        btnCerrar.setEnabled(!"CERRADA".equals(st) && !"RECHAZADA".equals(st));
 
         // - Agregar insumo: permitido en PENDIENTE y APROBADA; bloqueado en CERRADO/RECHAZADA
-        btnAgregar.setEnabled(!"CERRADO".equals(st) && !"RECHAZADA".equals(st));
+        btnAgregar.setEnabled(!"CERRADA".equals(st) && !"RECHAZADA".equals(st));
     }
 
     private void onAprobar() {

@@ -2,8 +2,11 @@ package ambu.ui;
 
 import ambu.models.RegistroHistorial;
 import ambu.models.Usuario;
+import ambu.mysql.DatabaseConnection;
 import ambu.process.HistorialService;
 import ambu.ui.componentes.CustomButton;
+import ambu.ui.dialog.DevolucionParcialDialog;
+import ambu.process.TicketsService;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -14,6 +17,10 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 
 import java.awt.*;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -28,6 +35,7 @@ public class PanelHistorial extends JPanel {
     private boolean esVistaAdmin;
     private JTextField campoBusqueda;
     private TableRowSorter<HistorialTableModel> sorter;
+    private TicketsService ticketsService = new TicketsService(); 
 
     public PanelHistorial(Usuario usuarioActual, boolean esVistaAdmin) {
         this.usuarioActual = usuarioActual;
@@ -147,43 +155,74 @@ public class PanelHistorial extends JPanel {
         worker.execute();
     }
 
+    // -----------------------------------------------
+    // | Método para registrar las devoluciones      |
+    // -----------------------------------------------
+
     private void registrarDevolucion() {
-        int filaSeleccionada = tablaHistorial.getSelectedRow();
-        if (filaSeleccionada == -1) {
-            JOptionPane.showMessageDialog(this, "Por favor, selecciona un préstamo para registrar su devolución.", "Advertencia", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        RegistroHistorial registro = tableModel.getDatoEnFila(filaSeleccionada);
-
-
-        if (!"Préstamo".equalsIgnoreCase(registro.getTipo()) || !"APROBADO".equalsIgnoreCase(registro.getEstado())) {
-            JOptionPane.showMessageDialog(this, "Solo se pueden devolver préstamos con estado 'APROBADO'.", "Acción no válida", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Confirmas la devolución de " + registro.getCantidad() + " x " + registro.getNombreInsumo() + "?\n" +
-                "La devolución será registrada a tu nombre: " + usuarioActual.getNomUsuario(),
-                "Confirmar Devolución",
-                JOptionPane.YES_NO_OPTION);
-
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                // El ID del registro es el id_prestamo
-                boolean exito = historialService.registrarDevolucion(registro.getId(), usuarioActual.getId());
-                if (exito) {
-                    JOptionPane.showMessageDialog(this, "Devolución registrada exitosamente.");
-                    cargarHistorial(); // Refrescar la tabla
-                } else {
-                    JOptionPane.showMessageDialog(this, "No se pudo registrar la devolución. El préstamo podría ya haber sido devuelto.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Error de base de datos al registrar la devolución.", "Error Crítico", JOptionPane.ERROR_MESSAGE);
-            }
-        }
+    int filaVista = tablaHistorial.getSelectedRow();
+    if (filaVista == -1) {
+        JOptionPane.showMessageDialog(this, "Por favor, selecciona un préstamo para registrar su devolución.", "Advertencia", JOptionPane.WARNING_MESSAGE);
+        return;
     }
+
+    // Si la tabla tiene sorter/filtro, conviértelo a índice del modelo
+    int filaModelo = tablaHistorial.convertRowIndexToModel(filaVista);
+
+    // Toma el registro (si tu método espera índice de modelo, úsalo; si espera de vista, deja filaVista)
+    RegistroHistorial registro = tableModel.getDatoEnFila(filaModelo);
+
+    if (!"Préstamo".equalsIgnoreCase(registro.getTipo()) || !"ENTREGADO".equalsIgnoreCase(registro.getEstado())) {
+        JOptionPane.showMessageDialog(this, "Solo se pueden devolver préstamos con estado 'ENTREGADO'.",
+                "Acción no válida", JOptionPane.ERROR_MESSAGE);
+        return;
+    }
+
+    // --- Lee "pendiente" y "unidad" desde el TableModel para el diálogo ---
+    // Ajusta estos índices a tu modelo real:
+    final int COL_PENDIENTE = 6; // (ejemplo) columna donde muestras (cantidad - cantidad_devuelta)
+    final int COL_UNIDAD    = 7; // (ejemplo) columna de unidad (L, ml, kg, etc.)
+
+    java.math.BigDecimal pendiente;
+    String unidad;
+
+    try {
+        Object valPend = tableModel.getValueAt(filaModelo, COL_PENDIENTE);
+        pendiente = (valPend instanceof java.math.BigDecimal)
+                ? (java.math.BigDecimal) valPend
+                : new java.math.BigDecimal(valPend.toString());
+    } catch (Exception ex) {
+
+        pendiente = new java.math.BigDecimal(String.valueOf(registro.getCantidad()));
+    }
+
+    try {
+        Object valUni = tableModel.getValueAt(filaModelo, COL_UNIDAD);
+        unidad = (valUni == null) ? "" : valUni.toString();
+    } catch (Exception ex) {
+        unidad = "";
+    }
+
+    if (pendiente.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+        JOptionPane.showMessageDialog(this, "Este préstamo ya no tiene pendiente por devolver.");
+        return;
+    }
+
+    // --- Abre el diálogo de devolución parcial ---
+    DevolucionParcialDialog.show(
+            SwingUtilities.getWindowAncestor(this),
+            ticketsService,                  // <-- ajusta el nombre de tu servicio si difiere
+            registro.getId(),               // id_prestamo
+            pendiente,                      // pendiente por devolver (para validar el máximo)
+            unidad,                         // unidad para mostrar (opcional)
+            usuarioActual.getId(),          // usuario que recibe la devolución
+            () -> {                         // onSuccess: refresca pantallas
+                cargarHistorial();          // tu método actual para refrescar la tabla
+            }
+    );
+}
+
+        
 
         private void filtrarTabla() {
         String texto = campoBusqueda.getText();
@@ -250,10 +289,10 @@ class HistorialCellRenderer extends DefaultTableCellRenderer {
         HistorialTableModel model = (HistorialTableModel) table.getModel();
         String estado = (String) model.getValueAt(row, 5);
 
-        if ("EN_PRESTAMO".equalsIgnoreCase(estado)) {
+        if ("ENTREGADO".equalsIgnoreCase(estado)) {
             c.setBackground(new Color(255, 255, 204)); // Amarillo pálido
             c.setForeground(Color.BLACK);
-        } else if ("DEVUELTA".equalsIgnoreCase(estado)) {
+        } else if ("DEVUELTO".equalsIgnoreCase(estado)) {
             c.setBackground(new Color(204, 255, 204)); // Verde pálido
             c.setForeground(Color.BLACK);
         } else {

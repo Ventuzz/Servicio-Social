@@ -3,6 +3,7 @@ package ambu.process;
 import ambu.models.RegistroHistorial;
 import ambu.mysql.DatabaseConnection;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +85,26 @@ public class HistorialService {
             return ps.executeUpdate() > 0;
         }
     }
+
+    public boolean registrarDevolucionParcial(int idPrestamo, BigDecimal cantidadADevolver, long idUsuarioReceptor) throws SQLException {
+    final String sql =
+        "UPDATE prestamos p " +
+        "SET p.cantidad_devuelta = p.cantidad_devuelta + ?, " +
+        "    p.id_usuario_receptor_dev = ?, " +
+        "    p.fecha_devolucion = CASE WHEN (p.cantidad_devuelta + ?) >= p.cantidad THEN CURRENT_TIMESTAMP ELSE p.fecha_devolucion END, " +
+        "    p.estado = CASE WHEN (p.cantidad_devuelta + ?) >= p.cantidad THEN 'DEVUELTO' ELSE 'ENTREGADO' END " +
+        "WHERE p.id_prestamo=? AND p.estado IN ('ENTREGADO','APROBADO')";
+
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setBigDecimal(1, cantidadADevolver);
+        ps.setLong(2, idUsuarioReceptor);
+        ps.setBigDecimal(3, cantidadADevolver);
+        ps.setBigDecimal(4, cantidadADevolver);
+        ps.setInt(5, idPrestamo);
+        return ps.executeUpdate() > 0;
+    }
+}
 
     // ----- Queries internas -----
 
