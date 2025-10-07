@@ -14,7 +14,8 @@ public class PanelInicioUsuario extends JPanel {
     private JSplitPane split;
 
     private static final int TAB_SOLICITUD = 0;
-    private static final int TAB_HISTORIAL = 1;
+    private static final int TAB_COMBUSTIBLE = 1;
+    private static final int TAB_HISTORIAL = 2;
 
     // Constructor de compatibilidad (sin manejador explícito de logout)
     public PanelInicioUsuario(Usuario usuarioActual) {
@@ -63,6 +64,7 @@ public class PanelInicioUsuario extends JPanel {
         menuPestanas.setMinimumSize(new Dimension(0, 0));
         
         menuPestanas.addTab("Solicitud de Material", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Solicitud de Combustible", panelClear(new BorderLayout()));
         menuPestanas.addTab("Historial", panelClear(new BorderLayout()));
         
         // --- BOTÓN CERRAR SESIÓN ---
@@ -118,6 +120,9 @@ public class PanelInicioUsuario extends JPanel {
                 break;
             case TAB_HISTORIAL:
                 contentPanel.add(buildHistorialView(), BorderLayout.CENTER);
+                break;
+            case TAB_COMBUSTIBLE:
+                contentPanel.add(new PanelSolicitudCombustible(usuarioActual.getId(), usuarioActual.getNomUsuario()), BorderLayout.CENTER);
                 break;
             default:
                 contentPanel.add(new JLabel("Sección no disponible"), BorderLayout.CENTER);

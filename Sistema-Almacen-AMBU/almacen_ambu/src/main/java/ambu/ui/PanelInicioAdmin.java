@@ -1,6 +1,8 @@
 package ambu.ui;
 
 import ambu.models.Usuario;
+import ambu.process.TicketsService;
+
 import javax.swing.*;
 import java.awt.*;
 import ambu.models.Usuario; 
@@ -52,9 +54,11 @@ public class PanelInicioAdmin extends JPanel {
         menuPestanas.setUI(new CustomTabbedPaneUI());
         
         menuPestanas.addTab("Registro Ticket", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Ticket Combustible", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Usuarios", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Inventario", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Aprobaciones Gasolina", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial", new JPanel() {{ setOpaque(false); }});
         
 
@@ -80,12 +84,16 @@ public class PanelInicioAdmin extends JPanel {
 
         PanelTicketAdmin panelTicketAdmin = new PanelTicketAdmin(usuario.getId());
         panelDerecho.add(panelTicketAdmin, "Registro Ticket");
+        PanelSolicitudCombustible panelTicketCombustible = new PanelSolicitudCombustible(usuario.getId(), usuario.getNomUsuario());
+        panelDerecho.add(panelTicketCombustible, "Ticket Combustible");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();
         panelDerecho.add(panelInventario, "Inventario");
-        PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId());
+        PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobaciones, "Aprobaciones");
+        PanelAprobacionesGasolinaAdmin panelAprobacionesGasolina = new PanelAprobacionesGasolinaAdmin(usuario.getId(), true, new TicketsService());
+        panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
         panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
 
         // 5. LÓGICA DE CAMBIO DE PESTAÑA
@@ -94,9 +102,11 @@ public class PanelInicioAdmin extends JPanel {
             String tituloPestana = menuPestanas.getTitleAt(indiceSeleccionado);
             switch (tituloPestana) {
                 case "Registro Ticket": cardLayout.show(panelDerecho, "Registro Ticket"); break;
+                case "Ticket Combustible": cardLayout.show(panelDerecho, "Ticket Combustible"); break;
                 case "Usuarios": cardLayout.show(panelDerecho, "Usuarios"); break;
                 case "Inventario": cardLayout.show(panelDerecho, "Inventario"); break;
                 case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;
+                case "Aprobaciones Gasolina": cardLayout.show(panelDerecho, "Aprobaciones Gasolina"); break;
                 case "Historial": cardLayout.show(panelDerecho, "Historial"); break;
             }
         });
@@ -124,52 +134,6 @@ public class PanelInicioAdmin extends JPanel {
         SwingUtilities.invokeLater(() -> splitPane.setDividerLocation(0.30));
     }
 
-    private JPanel crearPanelEjemplo(String texto) {
-    JPanel panel = new JPanel(new GridBagLayout());
-    panel.setOpaque(false);
     
-    JLabel label = new JLabel(texto + " en construcción.");
-    label.setFont(new Font("Arial", Font.BOLD, 22));
-    label.setForeground(Color.WHITE);
-    
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.anchor = GridBagConstraints.CENTER; // Centra el componente
-    gbc.weightx = 1.0; // Ocupa el espacio disponible para poder centrarse
-    gbc.weighty = 1.0;
-    
-    panel.add(label, gbc);
-    
-    return panel;
-}
 
-    /*
-        private void cargarLogs() {
-        Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-        PanelTransicion loadingDialog = new PanelTransicion(owner);
-
-        SwingWorker<List<Log>, Void> worker = new SwingWorker<>() {
-            @Override
-            protected List<Log> doInBackground() throws Exception {
-                // Tarea pesada: obtener logs de la base de datos
-                return logService.obtenerTodosLosLogs();
-            }
-
-            @Override
-            protected void done() {
-                loadingDialog.setVisible(false);
-                loadingDialog.dispose();
-                try {
-                    List<Log> logs = get();
-                    logTableModel.setLogs(logs);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(owner, "No se pudieron cargar los logs de actividad.", "Error de Carga", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        };
-
-        worker.execute();
-        loadingDialog.setVisible(true);
-    }
-        */
 }

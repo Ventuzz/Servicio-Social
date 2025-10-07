@@ -3,6 +3,7 @@ package ambu.process;
 import ambu.models.RegistroHistorial;
 import ambu.mysql.DatabaseConnection;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ public class HistorialService {
         try (Connection cn = DatabaseConnection.getConnection()) {
             out.addAll(querySolicitudes(cn, null));
             out.addAll(queryPrestamos(cn, null));
+            out.addAll(new HistorialServiceCombustiblePatch().mapearHistorialCombustibleGeneral(cn));
         }
         out.sort((a,b) -> {
             Timestamp ta = a.getFecha(), tb = b.getFecha();
@@ -34,7 +36,79 @@ public class HistorialService {
         });
         return out;
     }
-    
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+public class HistorialServiceCombustiblePatch {
+
+    public List<RegistroHistorial> mapearHistorialCombustibleGeneral(Connection cn) throws SQLException {
+    final String sql =
+        "SELECT  c.id_control_combustible AS id,\n" +
+        "        c.fecha                   AS fecha,\n" +
+        "        COALESCE(c.estado,'PENDIENTE') AS estado,\n" +
+        "        COALESCE(u.nom_usuario, CAST(c.id_usuario_solicitante AS CHAR)) AS solicitante,\n" +
+        "        e.articulo               AS insumo,\n" +
+        "        c.cantidad_entregada     AS cantidad,\n" +
+        "        'GASOLINA'               AS tipo\n" +
+        "FROM control_combustible c\n" +
+        "LEFT JOIN usuarios u   ON u.usuario_id = c.id_usuario_solicitante\n" +
+        "LEFT JOIN existencias e ON e.id = c.id_existencia";
+
+    List<RegistroHistorial> list = new java.util.ArrayList<RegistroHistorial>();
+    try (PreparedStatement ps = cn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            RegistroHistorial r = new RegistroHistorial();
+            r.setId(rs.getInt("id"));
+            r.setFecha(rs.getTimestamp("fecha"));
+            r.setEstado(rs.getString("estado"));
+            r.setNombreUsuario(rs.getString("solicitante"));
+            r.setNombreInsumo(rs.getString("insumo"));
+            java.math.BigDecimal q = rs.getBigDecimal("cantidad");
+            r.setCantidad(q == null ? 0 : q.intValue());
+            r.setTipo(rs.getString("tipo")); // ← clave para la nueva columna "tipo"
+            list.add(r);
+        }
+    }
+    return list;
+}
+
+public List<RegistroHistorial> mapearHistorialCombustiblePorUsuario(Connection cn, long idUsuario) throws SQLException {
+    final String sql =
+        "SELECT  c.id_control_combustible AS id,\n" +
+        "        c.fecha                   AS fecha,\n" +
+        "        COALESCE(c.estado,'PENDIENTE') AS estado,\n" +
+        "        COALESCE(u.nom_usuario, CAST(c.id_usuario_solicitante AS CHAR)) AS solicitante,\n" +
+        "        e.articulo               AS insumo,\n" +
+        "        c.cantidad_entregada     AS cantidad,\n" +
+        "        'GASOLINA'               AS tipo\n" +
+        "FROM control_combustible c\n" +
+        "LEFT JOIN usuarios u   ON u.usuario_id = c.id_usuario_solicitante\n" +
+        "LEFT JOIN existencias e ON e.id = c.id_existencia\n" +
+        "WHERE c.id_usuario_solicitante = ?";
+
+    List<RegistroHistorial> list = new java.util.ArrayList<RegistroHistorial>();
+    try (PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setLong(1, idUsuario);
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                RegistroHistorial r = new RegistroHistorial();
+                r.setId(rs.getInt("id"));
+                r.setFecha(rs.getTimestamp("fecha"));
+                r.setEstado(rs.getString("estado"));
+                r.setNombreUsuario(rs.getString("solicitante"));
+                r.setNombreInsumo(rs.getString("insumo"));
+                java.math.BigDecimal q = rs.getBigDecimal("cantidad");
+                r.setCantidad(q == null ? 0 : q.intValue());
+                r.setTipo(rs.getString("tipo"));
+                list.add(r);
+            }
+        }
+    }
+    return list;
+    }
+}
+
+
     public List<RegistroHistorial> listarUnificado(long usuarioId, boolean esAdmin) throws SQLException {
     try (Connection cn = DatabaseConnection.getConnection()) {
         List<RegistroHistorial> out = new ArrayList<>();
@@ -59,6 +133,7 @@ public class HistorialService {
         try (Connection cn = DatabaseConnection.getConnection()) {
             out.addAll(querySolicitudes(cn, idUsuario));
             out.addAll(queryPrestamos(cn, idUsuario));
+            out.addAll(new HistorialServiceCombustiblePatch().mapearHistorialCombustiblePorUsuario(cn, idUsuario));
         }
         out.sort((a,b) -> {
             Timestamp ta = a.getFecha(), tb = b.getFecha();
@@ -69,8 +144,6 @@ public class HistorialService {
         });
         return out;
     }
-
-    // ----- Actualizaciones -----
 
     /** Marca un préstamo como DEVUELTO. */
     public boolean registrarDevolucion(int idPrestamo, long idUsuarioReceptor) throws SQLException {
@@ -84,6 +157,26 @@ public class HistorialService {
             return ps.executeUpdate() > 0;
         }
     }
+
+    public boolean registrarDevolucionParcial(int idPrestamo, BigDecimal cantidadADevolver, long idUsuarioReceptor) throws SQLException {
+    final String sql =
+        "UPDATE prestamos p " +
+        "SET p.cantidad_devuelta = p.cantidad_devuelta + ?, " +
+        "    p.id_usuario_receptor_dev = ?, " +
+        "    p.fecha_devolucion = CASE WHEN (p.cantidad_devuelta + ?) >= p.cantidad THEN CURRENT_TIMESTAMP ELSE p.fecha_devolucion END, " +
+        "    p.estado = CASE WHEN (p.cantidad_devuelta + ?) >= p.cantidad THEN 'DEVUELTO' ELSE 'ENTREGADO' END " +
+        "WHERE p.id_prestamo=? AND p.estado IN ('ENTREGADO','APROBADO')";
+
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setBigDecimal(1, cantidadADevolver);
+        ps.setLong(2, idUsuarioReceptor);
+        ps.setBigDecimal(3, cantidadADevolver);
+        ps.setBigDecimal(4, cantidadADevolver);
+        ps.setInt(5, idPrestamo);
+        return ps.executeUpdate() > 0;
+    }
+}
 
     // ----- Queries internas -----
 

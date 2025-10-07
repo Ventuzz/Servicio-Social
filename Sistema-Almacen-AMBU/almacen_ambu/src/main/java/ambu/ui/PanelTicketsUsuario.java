@@ -12,6 +12,8 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+
 import javax.swing.table.TableRowSorter;
 
 
@@ -56,16 +58,34 @@ public class PanelTicketsUsuario extends JPanel {
         tblDisponibles = new JTable(disponiblesModel);
         sorter = new TableRowSorter<>(disponiblesModel);
         tblDisponibles.setRowSorter(sorter);
+        tblDisponibles.getTableHeader().setReorderingAllowed(false); // evita que cambien las posiciones de columnas
 
+        
         JPanel panelSuperiorNorte = new JPanel(new BorderLayout());
         panelSuperiorNorte.add(new JLabel("Inventario disponible"), BorderLayout.WEST);
-        
-        JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelBusqueda.add(new JLabel("Buscar:"));
-        campoBusqueda = new JTextField(20); // Ancho del campo de búsqueda
-        panelBusqueda.add(campoBusqueda);
-        panelSuperiorNorte.add(panelBusqueda, BorderLayout.EAST);
-        
+
+        JPanel panelBuscar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panelBuscar.add(new JLabel("Buscar:"));
+        campoBusqueda = new JTextField(20);
+        panelBuscar.add(campoBusqueda);
+        campoBusqueda.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { filtrar(); }
+            @Override public void removeUpdate(DocumentEvent e) { filtrar(); }
+            @Override public void changedUpdate(DocumentEvent e) { filtrar(); }
+            private void filtrar() {
+                String q = campoBusqueda.getText();
+                if (q == null || q.isBlank()) {
+                    sorter.setRowFilter(null);
+                } else {
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(q)));
+                }
+            }
+        });
+    
+        panelSuperiorNorte.add(panelBuscar, BorderLayout.EAST);
+        JButton btnRefrescar = new JButton("Refrescar");
+        btnRefrescar.addActionListener(e -> cargarDisponiblesAsync());
+        panelBuscar.add(btnRefrescar);
 
         JScrollPane spDisp = new JScrollPane(tblDisponibles);
         JPanel pDisp = new JPanel(new BorderLayout(5,5));
@@ -73,21 +93,6 @@ public class PanelTicketsUsuario extends JPanel {
         pDisp.add(panelSuperiorNorte, BorderLayout.NORTH);
         pDisp.add(spDisp, BorderLayout.CENTER);
 
-        campoBusqueda.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                filtrarTabla();
-            }
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                filtrarTabla();
-            }
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                filtrarTabla();
-            }
-        });
-        
 
         JPanel pForm = new JPanel(new FlowLayout(FlowLayout.LEFT));
         txtCantidad = new JTextField(6);
@@ -129,15 +134,6 @@ public class PanelTicketsUsuario extends JPanel {
         split.setBottomComponent(pCar);
     }
 
-     private void filtrarTabla() {
-        String texto = campoBusqueda.getText();
-        if (texto.trim().length() == 0) {
-            sorter.setRowFilter(null); // Si no hay texto, no se filtra
-        } else {
-            // El "(?i)" hace que la búsqueda no distinga mayúsculas de minúsculas
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + texto));
-        }
-    }
 
     private void cargarDisponiblesAsync() {
         new SwingWorker<List<DisponibleItem>, Void>() {
@@ -156,9 +152,15 @@ public class PanelTicketsUsuario extends JPanel {
     }
 
     private void agregarAlCarrito() {
-        int row = tblDisponibles.getSelectedRow();
-        if (row < 0) { showWarn("Selecciona un artículo de la lista de disponibles."); return; }
-        DisponibleItem it = disponiblesModel.getAt(row);
+        int viewRow = tblDisponibles.getSelectedRow(); 
+        if (viewRow < 0) {
+            showWarn("Selecciona un artículo de la lista de disponibles.");
+            return;
+        }
+
+        int modelRow = tblDisponibles.convertRowIndexToModel(viewRow);
+        
+        DisponibleItem it = disponiblesModel.getAt(modelRow);
 
         String sc = txtCantidad.getText().trim();
         String unidad = txtUnidad.getText().trim();
@@ -166,7 +168,7 @@ public class PanelTicketsUsuario extends JPanel {
         if (sc.isEmpty() || unidad.isEmpty() || obs.isEmpty()) {
             showWarn("Debes ingresar cantidad, unidad y observaciones.");
             return;
-    }
+        }
         BigDecimal cant;
         try { cant = new BigDecimal(sc); }
         catch (NumberFormatException ex) { showWarn("Cantidad inválida."); return; }
