@@ -4,6 +4,7 @@ import ambu.mysql.DatabaseConnection;
 
 import java.sql.*;
 import java.util.*;
+import java.util.Date;
 import java.math.BigDecimal;
 
 
@@ -34,6 +35,14 @@ public class TicketsService {
         public BigDecimal getCantidadDisponible() { return cantidadDisponible; }
     }
 
+    public static class CombustibleItem {
+    private final int idExistencia;
+    private final String nombre;
+    public CombustibleItem(int id, String nombre) { this.idExistencia = id; this.nombre = nombre; }
+    public int getId() { return idExistencia; }
+    @Override public String toString() { return nombre; } 
+}
+
     public static final class ItemSolicitado {
         private final int idExistencia;
         private final BigDecimal cantidad;
@@ -57,14 +66,17 @@ public class TicketsService {
         private final java.sql.Date fecha;
         private final String estado;
         private final Long idSolicitante;
+        private final String tipo;
 
-        public SolicitudResumen(int idSolicitud, java.sql.Date fecha, String estado, Long idSolicitante) {
+        public SolicitudResumen(int idSolicitud, String tipo, java.sql.Date fecha, String estado, Long idSolicitante) {
             this.idSolicitud = idSolicitud;
+            this.tipo = tipo;
             this.fecha = fecha;
             this.estado = estado;
             this.idSolicitante = idSolicitante;
         }
         public int getIdSolicitud() { return idSolicitud; }
+        public String getTipo() { return tipo; }
         public java.sql.Date getFecha() { return fecha; }
         public String getEstado() { return estado; }
         public Long getIdSolicitante() { return idSolicitante; }
@@ -130,6 +142,8 @@ public class TicketsService {
         if (o instanceof Number) return ((Number) o).longValue();
         try { return Long.valueOf(o.toString()); } catch (Exception e) { return null; }
     }
+
+    
 
     // =======================
     // Inventario disponible
@@ -294,20 +308,31 @@ public class TicketsService {
         }
     }
     public List<SolicitudResumen> listarSolicitudesPendientes() throws SQLException {
-        String sql = "SELECT id_solicitud, fecha, estado, id_usuario_solicitante " +
-                     "FROM solicitudes_insumos " +
-                     "WHERE estado='PENDIENTE' OR estado IS NULL " +
-                     "ORDER BY COALESCE(creada_en, NOW()) DESC";
+        String sql = 
+            "(SELECT id_solicitud AS id, 'Insumo' AS tipo, fecha, estado, COALESCE(u.nom_usuario, s.solicitante_externo) AS solicitante " +
+            "FROM solicitudes_insumos s LEFT JOIN usuarios u ON u.usuario_id = s.id_usuario_solicitante " +
+            "WHERE s.estado = 'PENDIENTE') " +
+            "UNION ALL " +
+            "(SELECT id_control_combustible AS id, 'Combustible' AS tipo, fecha, estado, u.nom_usuario AS solicitante " +
+            "FROM control_combustible c JOIN usuarios u ON u.usuario_id = c.id_usuario_solicitante " +
+            "WHERE c.estado = 'PENDIENTE') " +
+            "UNION ALL " +
+            "(SELECT id_control_fluido AS id, 'Fluido' AS tipo, fecha, estado, u.nom_usuario AS solicitante " +
+            "FROM control_fluidos f JOIN usuarios u ON u.usuario_id = f.id_usuario_solicitante " +
+            "WHERE f.estado = 'PENDIENTE') " +
+            "ORDER BY fecha DESC";
+
         try (Connection cn = DatabaseConnection.getConnection();
              PreparedStatement ps = cn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             List<SolicitudResumen> out = new ArrayList<>();
             while (rs.next()) {
                 out.add(new SolicitudResumen(
-                        rs.getInt("id_solicitud"),
-                        rs.getDate("fecha"),
-                        rs.getString("estado"),
-                        toLong(rs.getObject("id_usuario_solicitante"))
+                    rs.getInt("id"),
+                    rs.getString("tipo"),
+                    rs.getDate("fecha"),
+                    rs.getString("estado"),
+                    rs.getLong("solicitante")
                 ));
             }
             return out;
@@ -392,6 +417,75 @@ public class TicketsService {
         }
     }
 
+     public void aprobarRechazarCombustible(int id, boolean aprobar) throws SQLException {
+    Connection cn = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        if (aprobar) {
+            // 1) Leer cantidad e id_existencia del control (y bloquear fila de la existencia después)
+            Integer idExistencia = null;
+            java.math.BigDecimal cantidad = null;
+
+            ps = cn.prepareStatement(
+                "SELECT id_existencia, cantidad_entregada " +
+                "FROM control_combustible WHERE id_control_combustible = ?"
+            );
+            ps.setInt(1, id);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                idExistencia = (Integer) rs.getObject(1);
+                cantidad = rs.getBigDecimal(2);
+            }
+            rs.close(); rs = null;
+            ps.close(); ps = null;
+
+            // 2) Si hay existencia y cantidad, descontar stock (valida insuficiencia)
+            if (idExistencia != null && cantidad != null && cantidad.signum() > 0) {
+                descontarStockExistencia(cn, idExistencia.intValue(), cantidad);
+            }
+
+            // 3) Marcar como APROBADA
+            ps = cn.prepareStatement(
+                "UPDATE control_combustible SET estado = 'APROBADA' WHERE id_control_combustible = ?"
+            );
+            ps.setInt(1, id);
+            ps.executeUpdate();
+            ps.close(); ps = null;
+        } else {
+            // Solo rechaza (no toca inventario)
+            ps = cn.prepareStatement(
+                "UPDATE control_combustible SET estado = 'RECHAZADA' WHERE id_control_combustible = ?"
+            );
+            ps.setInt(1, id);
+            ps.executeUpdate();
+            ps.close(); ps = null;
+        }
+
+        cn.commit();
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
+
+    public void aprobarRechazarFluido(int id, boolean aprobar) throws SQLException {
+        String nuevoEstado = aprobar ? "APROBADA" : "RECHAZADA";
+        String sql = "UPDATE control_fluidos SET estado = ? WHERE id_control_fluido = ?";
+        try (Connection cn = DatabaseConnection.getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nuevoEstado);
+            ps.setInt(2, id);
+            ps.executeUpdate();
+        }
+    }
+
     public void rechazarSolicitud(int idSolicitud, String motivo) throws SQLException {
         final String sql = "UPDATE solicitudes_insumos " +
                            "SET estado='RECHAZADA', motivo_rechazo=?, aprobada_en=NULL " +
@@ -403,6 +497,206 @@ public class TicketsService {
             ps.executeUpdate();
         }
     }
+
+    private static final class VehInfo {
+    final String vehiculo; final String placas; final Integer km;
+    VehInfo(String v, String p, Integer k){ this.vehiculo=v; this.placas=p; this.km=k; }
+}
+private static VehInfo parseVehiculoPlacasKm(String obsOriginal){
+    if (obsOriginal == null) obsOriginal = "";
+    String obs = obsOriginal.replace('\n',' ').replace('\r',' ').trim();
+
+    String veh = "";
+    String pla = "";
+    Integer km  = null;
+
+    java.util.regex.Pattern pVeh = java.util.regex.Pattern.compile("Veh[íi]culo\\s*:\\s*([^|]+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+    java.util.regex.Pattern pPla = java.util.regex.Pattern.compile("Placas\\s*:\\s*([^|]+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+    java.util.regex.Pattern pKm  = java.util.regex.Pattern.compile("\\bK[m|M]\\s*:\\s*(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    java.util.regex.Matcher m;
+    m = pVeh.matcher(obs); if (m.find()) veh = m.group(1).trim();
+    m = pPla.matcher(obs); if (m.find()) pla = m.group(1).trim();
+    m = pKm.matcher(obs);  if (m.find())  try { km = Integer.valueOf(m.group(1)); } catch(Exception ignore){}
+
+    // Limpieza simple
+    if (veh.equalsIgnoreCase("null")) veh = "";
+    if (pla.equalsIgnoreCase("null")) pla = "";
+    return new VehInfo(veh, pla, km);
+}
+
+
+    private void descontarStockExistencia(Connection cn, int idExistencia, java.math.BigDecimal cantidad) throws SQLException {
+    String colStock = detectarColumnaStockExistencias(cn);
+    if (colStock == null) {
+        throw new SQLException("No se encontró columna de stock en 'existencias' (intentado: cantidad_fisica, cantidad, stock, existencia).");
+    }
+
+    // Bloquea la fila de la existencia para evitar carreras
+    java.math.BigDecimal actual = null;
+    try (PreparedStatement ps = cn.prepareStatement(
+            "SELECT " + colStock + " FROM existencias WHERE id = ? FOR UPDATE")) {
+        ps.setInt(1, idExistencia);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+                throw new SQLException("Existencia no encontrada (id=" + idExistencia + ").");
+            }
+            actual = rs.getBigDecimal(1);
+        }
+    }
+
+    if (actual == null) actual = java.math.BigDecimal.ZERO;
+    if (cantidad == null || cantidad.signum() <= 0) return;
+
+    if (actual.compareTo(cantidad) < 0) {
+        throw new SQLException("Stock insuficiente en existencias.id=" + idExistencia +
+                " (actual=" + actual + ", solicitado=" + cantidad + ").");
+    }
+
+    java.math.BigDecimal nuevo = actual.subtract(cantidad);
+
+    try (PreparedStatement up = cn.prepareStatement(
+            "UPDATE existencias SET " + colStock + " = ? WHERE id = ?")) {
+        up.setBigDecimal(1, nuevo);
+        up.setInt(2, idExistencia);
+        up.executeUpdate();
+    }
+}
+
+/**
+ * Detecta la columna de stock real en 'existencias' usando INFORMATION_SCHEMA.
+ * Prioridad: cantidad_fisica, cantidad, stock, existencia.
+ */
+private String detectarColumnaStockExistencias(Connection cn) throws SQLException {
+    final String[] candidatos = new String[] { "cantidad_fisica", "cantidad", "stock", "existencia" };
+
+    String dbName;
+    try (Statement st = cn.createStatement();
+         ResultSet rs = st.executeQuery("SELECT DATABASE()")) {
+        rs.next();
+        dbName = rs.getString(1);
+    }
+
+    final String sql =
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+        "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'existencias'";
+    java.util.Set<String> cols = new java.util.HashSet<String>();
+    try (PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setString(1, dbName);
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) cols.add(rs.getString(1).toLowerCase());
+        }
+    }
+
+    for (String c : candidatos) {
+        if (cols.contains(c.toLowerCase())) return c;
+    }
+    return null;
+}
+
+// ======= Método NUEVO: aprobar + entregar + registrar combustible =======
+public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws SQLException {
+    Connection cn = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        // 1) Cambia a APROBADA si estaba PENDIENTE/NULL
+        ps = cn.prepareStatement(
+            "UPDATE solicitudes_insumos " +
+            "SET estado='APROBADA', aprobada_en=CURRENT_TIMESTAMP, id_usuario_jefe_inmediato=? " +
+            "WHERE id_solicitud=? AND (estado='PENDIENTE' OR estado IS NULL)"
+        );
+        ps.setLong(1, adminId);
+        ps.setInt(2, idSolicitud);
+        int upd = ps.executeUpdate();
+        ps.close();
+        if (upd == 0) { cn.rollback(); return false; }
+
+        // 2) Inserta PRÉSTAMOS a partir del detalle (estado APROBADO)
+        PreparedStatement pi = cn.prepareStatement(
+            "INSERT INTO prestamos (id_solicitud, id_detalle, id_existencia, cantidad, estado, fecha_aprobacion) " +
+            "SELECT d.id_solicitud, d.id_detalle, d.id_existencia, d.cantidad, 'APROBADO', NOW() " +
+            "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud = ?"
+        );
+        pi.setInt(1, idSolicitud);
+        pi.executeUpdate();
+        pi.close();
+
+        // 3) Trae los préstamos insertados con su detalle/uso para decidir combustible
+        PreparedStatement qs = cn.prepareStatement(
+            "SELECT p.id_prestamo, p.id_existencia, p.cantidad, d.unidad, d.observaciones, " +
+            "       si.id_usuario_solicitante, si.solicitante_externo, e.uso " +
+            "FROM prestamos p " +
+            "JOIN solicitudes_insumos_detalle d ON d.id_detalle = p.id_detalle " +
+            "JOIN solicitudes_insumos si ON si.id_solicitud = p.id_solicitud " +
+            "JOIN existencias e ON e.id = p.id_existencia " +
+            "WHERE p.id_solicitud = ?"
+        );
+        qs.setInt(1, idSolicitud);
+        rs = qs.executeQuery();
+
+        // 4) Entregar cada préstamo y si es combustible registrar en control_combustible
+        PreparedStatement upEnt = cn.prepareStatement(
+            "UPDATE prestamos SET estado='ENTREGADO', fecha_entrega=CURRENT_TIMESTAMP " +
+            "WHERE id_prestamo=? AND estado='APROBADO'"
+        );
+        PreparedStatement insCC = cn.prepareStatement(
+            "INSERT INTO control_combustible " +
+            "(fecha, vehiculo_maquinaria, placas, kilometraje, id_existencia, " +
+            " cantidad_entregada, unidad_entregada, id_usuario_solicitante, devuelve, cantidad_devuelta, unidad_devuelta, id_usuario_recibe_almacen) " +
+            "VALUES (CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, FALSE, NULL, NULL, ?)"
+        );
+
+        while (rs.next()) {
+            int idPrestamo   = rs.getInt("id_prestamo");
+            int idExistencia = rs.getInt("id_existencia");
+            java.math.BigDecimal cantidad = rs.getBigDecimal("cantidad");
+            String unidad     = rs.getString("unidad");
+            String obs        = rs.getString("observaciones");
+            String uso        = rs.getString("uso");
+            Long idSolic     = (Long) rs.getObject("id_usuario_solicitante"); // puede ser null (externo)
+
+            // 4.1 Entregar préstamo
+            upEnt.setInt(1, idPrestamo);
+            upEnt.executeUpdate();
+
+            // 4.2 ¿Es combustible? Por uso o por marca en obs
+            boolean esCombustible = false;
+            if (uso != null && uso.toUpperCase().contains("COMBUST")) esCombustible = true;
+            if (!esCombustible && obs != null && obs.toUpperCase().contains("COMBUST")) esCombustible = true;
+
+            if (esCombustible) {
+                VehInfo vh = parseVehiculoPlacasKm(obs);
+                int param = 1;
+                insCC.setString(param++, vh.vehiculo); // vehiculo_maquinaria
+                insCC.setString(param++, vh.placas);   // placas
+                if (vh.km == null) insCC.setNull(param++, java.sql.Types.INTEGER); else insCC.setInt(param++, vh.km); // kilometraje
+                insCC.setInt(param++, idExistencia);    // id_existencia
+                insCC.setBigDecimal(param++, cantidad); // cantidad_entregada
+                insCC.setString(param++, unidad);       // unidad_entregada
+                if (idSolic == null) insCC.setNull(param++, java.sql.Types.BIGINT); else insCC.setLong(param++, idSolic); // id_usuario_solicitante
+                insCC.setLong(param++, adminId);        // id_usuario_recibe_almacen
+                insCC.executeUpdate();
+            }
+        }
+
+        rs.close(); qs.close();
+        upEnt.close(); insCC.close();
+
+        cn.commit();
+        return true;
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
 
     // =======================
     // Préstamos
@@ -587,7 +881,40 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
     }
 }
 
+public List<CombustibleItem> listarCombustibles() throws SQLException {
+    String sql = "SELECT id, articulo FROM existencias WHERE uso = 'Combustible' ORDER BY articulo";
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        List<CombustibleItem> out = new ArrayList<>();
+        while (rs.next()) {
+            out.add(new CombustibleItem(rs.getInt("id"), rs.getString("articulo")));
+        }
+        return out;
+    }
+}
 
+
+public boolean crearSolicitudCombustible(long idSolicitante, Date fecha, String vehiculo, String placas, int kilometraje, int idCombustible, BigDecimal cantidad, String unidad) throws SQLException {
+    String sql = "INSERT INTO control_combustible " +
+                 "(fecha, vehiculo_maquinaria, placas, kilometraje, id_existencia, cantidad_entregada, unidad_entregada, id_usuario_solicitante, estado) " +
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE')";
+    
+    try (Connection cn = DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        
+        ps.setDate(1, new java.sql.Date(fecha.getTime()));
+        ps.setString(2, vehiculo);
+        ps.setString(3, placas);
+        ps.setInt(4, kilometraje);
+        ps.setInt(5, idCombustible);
+        ps.setBigDecimal(6, cantidad);
+        ps.setString(7, unidad);
+        ps.setLong(8, idSolicitante);
+
+        return ps.executeUpdate() > 0;
+    }
+}
 
 public boolean rechazarPorTicket(int idSolicitud, long adminId, String motivo) throws SQLException {
     final String sql =
