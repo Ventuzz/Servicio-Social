@@ -16,7 +16,9 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
+import java.awt.event.ActionEvent;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -91,9 +93,20 @@ public class PanelTicketAdmin extends JPanel {
         pHeader.add(campoBusqueda, BorderLayout.CENTER);
         pDisp.add(pHeader, BorderLayout.NORTH);
 
-        JButton btnRefrescar = new JButton("Refrescar");
-        btnRefrescar.addActionListener(e -> cargarDisponiblesAsync());
+        Action refreshAction = new AbstractAction("Refrescar") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                cargarDisponiblesAsync();
+            }
+        };
+
+        JButton btnRefrescar = new JButton(refreshAction);
         pHeader.add(btnRefrescar, BorderLayout.EAST);
+        String refreshActionKey = "refrescarDisponibles";
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+        this.getActionMap().put(refreshActionKey, refreshAction);
+
 
         disponiblesModel = new DisponiblesTableModel();
         tblDisponibles = new JTable(disponiblesModel);

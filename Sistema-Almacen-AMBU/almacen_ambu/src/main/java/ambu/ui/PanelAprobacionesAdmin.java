@@ -11,6 +11,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -155,6 +156,14 @@ public class PanelAprobacionesAdmin extends JPanel {
         bottom.add(new JScrollPane(tblDetalles), BorderLayout.CENTER);
         split.setBottomComponent(bottom);
 
+        String refreshActionKey = "refrescarTickets";
+
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+
+        this.getActionMap().put(refreshActionKey, btnRefrescar.getAction());
+
         // Filtro de búsqueda en cabeceras
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
@@ -170,6 +179,8 @@ public class PanelAprobacionesAdmin extends JPanel {
                 actualizarBotonesPorSeleccion();
             }
         });
+        
+
     }
 
     private void applyFilter() {
@@ -246,6 +257,8 @@ public class PanelAprobacionesAdmin extends JPanel {
             }
         }.execute();
     }
+
+
 
     private void onRechazar() {
         Integer id = getSolicitudSeleccionada();

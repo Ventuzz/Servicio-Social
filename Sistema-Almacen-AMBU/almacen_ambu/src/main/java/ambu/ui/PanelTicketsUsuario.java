@@ -9,6 +9,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -86,6 +87,14 @@ public class PanelTicketsUsuario extends JPanel {
         JButton btnRefrescar = new JButton("Refrescar");
         btnRefrescar.addActionListener(e -> cargarDisponiblesAsync());
         panelBuscar.add(btnRefrescar);
+
+        String refreshActionKey = "refrescarTickets";
+
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+
+        this.getActionMap().put(refreshActionKey, btnRefrescar.getAction());
 
         JScrollPane spDisp = new JScrollPane(tblDisponibles);
         JPanel pDisp = new JPanel(new BorderLayout(5,5));

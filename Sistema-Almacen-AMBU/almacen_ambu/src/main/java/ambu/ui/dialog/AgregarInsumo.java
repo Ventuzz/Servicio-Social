@@ -9,6 +9,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
+import java.awt.event.KeyEvent;
 import java.awt.*;
 import java.awt.event.*;
 import java.math.BigDecimal;
@@ -177,6 +178,7 @@ public final class AgregarInsumo extends JDialog {
         getRootPane().registerKeyboardAction(e -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
+        bindF5ToRefrescar();
     }
 
     private void cargarDisponiblesAsync() {
@@ -213,6 +215,17 @@ public final class AgregarInsumo extends JDialog {
                 sorter.setRowFilter(null);
             }
         }
+    }
+
+    private void bindF5ToRefrescar() {
+        String actionKey = "REFRESCAR_DISPONIBLES";
+        KeyStroke f5 = KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0);
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(f5, actionKey);
+        getRootPane().getActionMap().put(actionKey, new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                cargarDisponiblesAsync();
+            }
+        });
     }
 
     private void tomarSeleccionActual() {
