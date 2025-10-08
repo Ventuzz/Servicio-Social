@@ -17,6 +17,8 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 
 import java.awt.*;
+import java.awt.event.ActionEvent; 
+import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -89,9 +91,23 @@ public class PanelHistorial extends JPanel {
             JPanel panelAcciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             panelAcciones.setOpaque(false);
 
+            Action refreshAction = new AbstractAction("Refrescar") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                cargarHistorial();
+                }
+            };
+            
             JButton btnRefrescar = new CustomButton("Refrescar");
-            btnRefrescar.addActionListener(e -> cargarHistorial());
+            btnRefrescar.addActionListener(e -> refreshAction.actionPerformed(e));
             panelAcciones.add(btnRefrescar);
+
+            String refreshActionKey = "refrescarHistorial";
+            InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+            inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+            this.getActionMap().put(refreshActionKey, refreshAction);
+
+
 
             // Añadir el botón de devolución SOLO si es la vista de administrador
             if (esVistaAdmin) {

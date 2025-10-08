@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
 import java.util.List;
+import java.awt.event.KeyEvent;
 
 
 public class PanelAprobacionesGasolinaAdmin extends JPanel {
@@ -109,6 +110,14 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         acciones.add(btnRechazar);
         acciones.add(btnAprobar);
         add(acciones, BorderLayout.SOUTH);
+
+        String refreshActionKey = "refrescarTickets";
+
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+
+        this.getActionMap().put(refreshActionKey, btnRefrescar.getAction());
     }
 
     private void aplicarFiltro() {
@@ -239,6 +248,8 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
             }
         }.execute();
     }
+
+
 
     private void onRechazar() {
         Integer id = getIdSeleccionado();
