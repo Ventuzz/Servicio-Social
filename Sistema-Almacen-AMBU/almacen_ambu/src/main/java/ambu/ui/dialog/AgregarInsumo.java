@@ -313,7 +313,7 @@ public final class AgregarInsumo extends JDialog {
                 case 0: return x.getMarca();
                 case 1: return x.getArticulo();
                 case 2: return x.getUbicacion();
-                case 3: return x.getCantidadDisponible();
+                case 3: return x.getCantidadFisica();
                 default: return null;
             }
         }

@@ -109,6 +109,7 @@ public class PanelTicketAdmin extends JPanel {
 
 
         disponiblesModel = new DisponiblesTableModel();
+        
         tblDisponibles = new JTable(disponiblesModel);
         sorter = new TableRowSorter<>(disponiblesModel);
         tblDisponibles.setRowSorter(sorter);
@@ -271,10 +272,15 @@ public class PanelTicketAdmin extends JPanel {
     private static class DisponiblesTableModel extends AbstractTableModel {
         private final String[] cols = {"Marca","Artículo","Ubicación","Disp."};
         private List<DisponibleItem> data = new ArrayList<>();
+         private boolean mostrarStockFisico = true;
+
         public void setData(List<DisponibleItem> d) { this.data = d != null ? d : new ArrayList<>(); fireTableDataChanged(); }
         @Override public int getRowCount() { return data.size(); }
         @Override public int getColumnCount() { return cols.length; }
-        @Override public String getColumnName(int c) { return cols[c]; }
+        @Override public String getColumnName(int c) {
+            if (c == 3) return mostrarStockFisico ? "Stock físico" : "Disponible";
+            return cols[c];
+            }
         @Override public Object getValueAt(int r, int c) {
             DisponibleItem x = data.get(r);
             switch (c) {
@@ -285,7 +291,7 @@ public class PanelTicketAdmin extends JPanel {
                 case 2:
                     return x.getUbicacion();
                 case 3:
-                    return x.getCantidadDisponible();
+                    return mostrarStockFisico ? x.getCantidadFisica() : x.getCantidadDisponible();
                 default:
                     return null;
             }

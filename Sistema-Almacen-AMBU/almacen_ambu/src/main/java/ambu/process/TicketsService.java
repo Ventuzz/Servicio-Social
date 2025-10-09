@@ -20,19 +20,22 @@ public class TicketsService {
         private final String articulo;
         private final String ubicacion;
         private final BigDecimal cantidadDisponible;
+        private final BigDecimal cantidadFisica; 
 
-        public DisponibleItem(int idExistencia, String marca, String articulo, String ubicacion, BigDecimal cantidadDisponible) {
+        public DisponibleItem(int idExistencia, String marca, String articulo, String ubicacion, BigDecimal cantidadDisponible, BigDecimal cantidadFisica) {
             this.idExistencia = idExistencia;
             this.marca = marca;
             this.articulo = articulo;
             this.ubicacion = ubicacion;
-            this.cantidadDisponible = cantidadDisponible;
+            this.cantidadDisponible = (cantidadDisponible != null) ? cantidadDisponible : BigDecimal.ZERO;
+            this.cantidadFisica     = (cantidadFisica     != null) ? cantidadFisica     : BigDecimal.ZERO;
         }
         public int getIdExistencia() { return idExistencia; }
         public String getMarca() { return marca; }
         public String getArticulo() { return articulo; }
         public String getUbicacion() { return ubicacion; }
         public BigDecimal getCantidadDisponible() { return cantidadDisponible; }
+        public BigDecimal getCantidadFisica() { return cantidadFisica; } 
     }
 
     public static class CombustibleItem {
@@ -149,7 +152,7 @@ public class TicketsService {
     // Inventario disponible
     // =======================
     public List<DisponibleItem> listarDisponibles() throws SQLException {
-        String sql = "SELECT id, marca, articulo, ubicacion, cantidad_disponible " +
+        String sql = "SELECT id, marca, articulo, ubicacion, cantidad_disponible, cantidad_fisica " +
                      "FROM vw_inventario_disponible " +
                      "WHERE cantidad_disponible > 0 ORDER BY articulo";
         try (Connection cn = DatabaseConnection.getConnection();
@@ -162,7 +165,8 @@ public class TicketsService {
                         rs.getString("marca"),
                         rs.getString("articulo"),
                         rs.getString("ubicacion"),
-                        rs.getBigDecimal("cantidad_disponible")
+                        rs.getBigDecimal("cantidad_disponible"),
+                        rs.getBigDecimal("cantidad_fisica")
                 ));
             }
             return out;
@@ -213,7 +217,7 @@ public class TicketsService {
         }
     }
 
-    // crearSolicitud para usuario externo (sin registro) OMITIDO
+    // crearSolicitud para usuario externo (sin registro) 
 
     public int crearSolicitudExterna(String nombreSolicitante, Long idJefe, List<ItemSolicitado> items) throws SQLException {
     if (nombreSolicitante == null || nombreSolicitante.trim().isEmpty())
@@ -339,6 +343,32 @@ public class TicketsService {
         }
     }
 
+    private void aumentarStockExistencia(Connection cn, int idExistencia, java.math.BigDecimal cantidad) throws SQLException {
+    String colStock = detectarColumnaStockExistencias(cn);
+    if (colStock == null) {
+        throw new SQLException("No se encontró columna de stock en 'existencias' (intentado: cantidad_fisica, cantidad, stock, existencia).");
+    }
+
+    java.math.BigDecimal actual = null;
+    try (PreparedStatement ps = cn.prepareStatement(
+            "SELECT " + colStock + " FROM existencias WHERE id = ? FOR UPDATE")) {
+        ps.setInt(1, idExistencia);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) throw new SQLException("Existencia no encontrada (id=" + idExistencia + ").");
+            actual = rs.getBigDecimal(1);
+            if (actual == null) actual = java.math.BigDecimal.ZERO;
+        }
+    }
+
+    java.math.BigDecimal nuevo = actual.add(cantidad);
+    try (PreparedStatement up = cn.prepareStatement(
+            "UPDATE existencias SET " + colStock + " = ? WHERE id = ?")) {
+        up.setBigDecimal(1, nuevo);
+        up.setInt(2, idExistencia);
+        up.executeUpdate();
+    }
+}
+
     public List<DetalleSolicitud> listarDetallesSolicitud(int idSolicitud) throws SQLException {
         // JOIN correcto a existencias.id  ← CORRECCIÓN CLAVE
         String sql = "SELECT d.id_detalle, d.id_existencia, e.articulo, d.cantidad, d.unidad, d.observaciones " +
@@ -369,12 +399,7 @@ public class TicketsService {
     // Aprobación y rechazo
     // =======================
 
-    /**
-     * Aprueba una solicitud:
-     *  1) Actualiza cantidad_aprobada en el detalle (por id_detalle).
-     *  2) Inserta en prestamos con INSERT…SELECT (NO inserta en detalle).  ← CORRECCIÓN CLAVE
-     *  3) Marca cabecera como APROBADA y guarda aprobada_en + (si aplica) jefe aprobador.
-     */
+
     public void aprobarSolicitud(int idSolicitud, Map<Integer, BigDecimal> aprobadasPorIdDetalle, long idAprobador) throws SQLException {
         if (aprobadasPorIdDetalle == null || aprobadasPorIdDetalle.isEmpty())
             throw new IllegalArgumentException("No se han indicado cantidades aprobadas.");
@@ -404,6 +429,7 @@ public class TicketsService {
             try (PreparedStatement pi = cn.prepareStatement(insPrest)) {
                 pi.setInt(1, idSolicitud);
                 pi.executeUpdate();
+                restarInventarioPorSolicitud(cn, idSolicitud);
             }
 
             // 3) Marca cabecera APROBADA
@@ -527,74 +553,65 @@ private static VehInfo parseVehiculoPlacasKm(String obsOriginal){
 
 
     private void descontarStockExistencia(Connection cn, int idExistencia, java.math.BigDecimal cantidad) throws SQLException {
-    String colStock = detectarColumnaStockExistencias(cn);
-    if (colStock == null) {
-        throw new SQLException("No se encontró columna de stock en 'existencias' (intentado: cantidad_fisica, cantidad, stock, existencia).");
-    }
+    String colStock = detectarColumnaStockExistencias(cn); // intenta: cantidad_fisica, cantidad, stock, existencia
+    if (colStock == null) throw new SQLException("No se encontró columna de stock en 'existencias'.");
 
-    // Bloquea la fila de la existencia para evitar carreras
-    java.math.BigDecimal actual = null;
+    java.math.BigDecimal actual;
     try (PreparedStatement ps = cn.prepareStatement(
             "SELECT " + colStock + " FROM existencias WHERE id = ? FOR UPDATE")) {
         ps.setInt(1, idExistencia);
         try (ResultSet rs = ps.executeQuery()) {
-            if (!rs.next()) {
-                throw new SQLException("Existencia no encontrada (id=" + idExistencia + ").");
-            }
+            if (!rs.next()) throw new SQLException("Existencia no encontrada (id=" + idExistencia + ").");
             actual = rs.getBigDecimal(1);
+            if (actual == null) actual = java.math.BigDecimal.ZERO;
         }
     }
 
-    if (actual == null) actual = java.math.BigDecimal.ZERO;
     if (cantidad == null || cantidad.signum() <= 0) return;
-
     if (actual.compareTo(cantidad) < 0) {
-        throw new SQLException("Stock insuficiente en existencias.id=" + idExistencia +
-                " (actual=" + actual + ", solicitado=" + cantidad + ").");
+        throw new SQLException("Stock insuficiente: id=" + idExistencia + ", actual=" + actual + ", requerido=" + cantidad);
     }
-
-    java.math.BigDecimal nuevo = actual.subtract(cantidad);
 
     try (PreparedStatement up = cn.prepareStatement(
             "UPDATE existencias SET " + colStock + " = ? WHERE id = ?")) {
-        up.setBigDecimal(1, nuevo);
+        up.setBigDecimal(1, actual.subtract(cantidad));
         up.setInt(2, idExistencia);
         up.executeUpdate();
     }
 }
 
-/**
- * Detecta la columna de stock real en 'existencias' usando INFORMATION_SCHEMA.
- * Prioridad: cantidad_fisica, cantidad, stock, existencia.
- */
+
 private String detectarColumnaStockExistencias(Connection cn) throws SQLException {
-    final String[] candidatos = new String[] { "cantidad_fisica", "cantidad", "stock", "existencia" };
-
-    String dbName;
-    try (Statement st = cn.createStatement();
-         ResultSet rs = st.executeQuery("SELECT DATABASE()")) {
-        rs.next();
-        dbName = rs.getString(1);
-    }
-
-    final String sql =
-        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-        "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'existencias'";
-    java.util.Set<String> cols = new java.util.HashSet<String>();
-    try (PreparedStatement ps = cn.prepareStatement(sql)) {
-        ps.setString(1, dbName);
-        try (ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) cols.add(rs.getString(1).toLowerCase());
+    String[] candidatos = {"cantidad_fisica","cantidad","stock","existencia"};
+    try (PreparedStatement ps = cn.prepareStatement("SELECT * FROM existencias LIMIT 1");
+         ResultSet rs = ps.executeQuery()) {
+        ResultSetMetaData md = rs.getMetaData();
+        for (String c : candidatos) {
+            for (int i = 1; i <= md.getColumnCount(); i++) {
+                if (c.equalsIgnoreCase(md.getColumnName(i))) return md.getColumnName(i);
+            }
         }
-    }
-
-    for (String c : candidatos) {
-        if (cols.contains(c.toLowerCase())) return c;
     }
     return null;
 }
 
-// ======= Método NUEVO: aprobar + entregar + registrar combustible =======
+private void restarInventarioPorSolicitud(Connection cn, int idSolicitud) throws SQLException {
+    final String sql = "SELECT d.id_existencia, COALESCE(d.cantidad_aprobada, d.cantidad) AS cant " +
+                       "FROM solicitudes_insumos_detalle d " +
+                       "WHERE d.id_solicitud = ? AND COALESCE(d.cantidad_aprobada, d.cantidad) > 0";
+    try (PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setInt(1, idSolicitud);
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int idExistencia = rs.getInt("id_existencia");
+                java.math.BigDecimal cant = rs.getBigDecimal("cant");
+                descontarStockExistencia(cn, idExistencia, cant);
+            }
+        }
+    }
+}
+
+
 public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws SQLException {
     Connection cn = null;
     PreparedStatement ps = null;
@@ -621,6 +638,20 @@ public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws 
             "SELECT d.id_solicitud, d.id_detalle, d.id_existencia, d.cantidad, 'APROBADO', NOW() " +
             "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud = ?"
         );
+        try (PreparedStatement q = cn.prepareStatement(
+        "SELECT d.id_existencia, COALESCE(d.cantidad_aprobada, d.cantidad) " +
+        "FROM solicitudes_insumos_detalle d WHERE d.id_solicitud=?")) {
+    q.setInt(1, idSolicitud);
+        try (ResultSet r = q.executeQuery()) {
+            while (r.next()) {
+                int idExistencia = r.getInt(1);
+                java.math.BigDecimal cant = r.getBigDecimal(2);
+                if (cant != null && cant.signum() > 0) {
+                    descontarStockExistencia(cn, idExistencia, cant);
+                    }
+                }
+            }
+        }
         pi.setInt(1, idSolicitud);
         pi.executeUpdate();
         pi.close();
@@ -662,6 +693,8 @@ public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws 
             // 4.1 Entregar préstamo
             upEnt.setInt(1, idPrestamo);
             upEnt.executeUpdate();
+
+            restarInventarioPorSolicitud(cn, idSolicitud);
 
             // 4.2 ¿Es combustible? Por uso o por marca en obs
             boolean esCombustible = false;
@@ -855,6 +888,7 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
         ps.setLong(1, adminId);
         ps.setLong(2, adminId); // quien aprueba también entrega (ajusta si usas otro usuario)
         ps.setInt(3, idSolicitud);
+        restarInventarioPorSolicitud(cn, idSolicitud);
         int upd = ps.executeUpdate();
         ps.close();
         if (upd == 0) { cn.rollback(); return false; }
@@ -958,22 +992,21 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
         cn.setAutoCommit(false);
 
         // 1. Obtener estado actual (sin cambios)
+        int idExistencia = 0;
         BigDecimal cantidadTotalPrestada = BigDecimal.ZERO;
         BigDecimal cantidadYaDevuelta = BigDecimal.ZERO;
         String estadoActual = null;
 
         try (PreparedStatement ps = cn.prepareStatement(
-            "SELECT cantidad, cantidad_devuelta, estado FROM prestamos WHERE id_prestamo=? FOR UPDATE")) {
-            ps.setInt(1, idPrestamo);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    cn.rollback();
-                    return false; // El préstamo no existe
-                }
-                cantidadTotalPrestada = rs.getBigDecimal(1);
-                // Si la cantidad devuelta es NULL en la BD, la tratamos como 0
-                cantidadYaDevuelta = rs.getBigDecimal(2) == null ? BigDecimal.ZERO : rs.getBigDecimal(2);
-                estadoActual = rs.getString(3);
+        "SELECT id_existencia, cantidad, COALESCE(cantidad_devuelta, 0), estado " +
+        "FROM prestamos WHERE id_prestamo = ? FOR UPDATE")) {
+        ps.setInt(1, idPrestamo);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) { cn.rollback(); throw new SQLException("Préstamo no existe."); }
+            idExistencia = rs.getInt(1);
+            cantidadTotalPrestada = rs.getBigDecimal(2);
+            cantidadYaDevuelta    = rs.getBigDecimal(3);
+            estadoActual          = rs.getString(4);
             }
         }
 
@@ -1016,6 +1049,7 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
             up.setLong(3, idUsuarioReceptor);
             up.setInt(4, idPrestamo);
             up.executeUpdate();
+            aumentarStockExistencia(cn, idExistencia, cantDev);
         }
 
         cn.commit();

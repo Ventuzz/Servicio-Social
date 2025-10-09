@@ -248,7 +248,7 @@ public class PanelTicketsUsuario extends JPanel {
                 case 1: return d.getMarca();
                 case 2: return d.getArticulo();
                 case 3: return d.getUbicacion();
-                case 4: return d.getCantidadDisponible();
+                case 4: return d.getCantidadFisica();
                 default: return "";
             }
         }
