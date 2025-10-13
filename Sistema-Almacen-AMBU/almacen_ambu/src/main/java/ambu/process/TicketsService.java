@@ -916,6 +916,51 @@ public boolean crearSolicitudCombustible(long idSolicitante, Date fecha, String 
     }
 }
 
+
+public boolean crearSolicitudCombustibleExterna(
+        String nombreSolicitante,
+        java.util.Date fecha,
+        String vehiculo,
+        String placas,
+        Integer kilometraje,
+        int idCombustible,
+        java.math.BigDecimal cantidad,
+        String unidad
+) throws SQLException {
+
+    if (nombreSolicitante == null || nombreSolicitante.trim().isEmpty())
+        throw new IllegalArgumentException("El nombre del solicitante es requerido.");
+    if (cantidad == null || cantidad.compareTo(java.math.BigDecimal.ZERO) <= 0)
+        throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+    if (unidad == null || unidad.trim().isEmpty())
+        throw new IllegalArgumentException("La unidad es requerida.");
+
+    final String SQL =
+            "INSERT INTO control_combustible " +
+            "(fecha, vehiculo_maquinaria, placas, kilometraje, id_existencia, " +
+            " cantidad_entregada, unidad_entregada, id_usuario_solicitante, solicitante_externo, estado) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, 'PENDIENTE')";
+
+    Connection cn = null;
+    PreparedStatement ps = null;
+    try {
+        cn = ambu.mysql.DatabaseConnection.getConnection();
+        ps = cn.prepareStatement(SQL);
+        ps.setDate(1, new java.sql.Date(fecha.getTime()));
+        ps.setString(2, vehiculo);
+        ps.setString(3, placas);
+        if (kilometraje == null) ps.setNull(4, java.sql.Types.INTEGER); else ps.setInt(4, kilometraje.intValue());
+        ps.setInt(5, idCombustible);
+        ps.setBigDecimal(6, cantidad.setScale(3, java.math.RoundingMode.DOWN));
+        ps.setString(7, unidad);
+        ps.setString(8, nombreSolicitante.trim());
+        return ps.executeUpdate() == 1;
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.close(); } catch (SQLException ignore) {}
+    }
+}
+
 public boolean rechazarPorTicket(int idSolicitud, long adminId, String motivo) throws SQLException {
     final String sql =
         "UPDATE solicitudes_insumos " +

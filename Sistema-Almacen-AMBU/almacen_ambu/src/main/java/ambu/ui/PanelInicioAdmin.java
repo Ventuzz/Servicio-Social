@@ -9,6 +9,7 @@ import ambu.models.Usuario;
 import ambu.ui.PanelHistorial;
 import ambu.ui.componentes.CustomTabbedPaneUI;
 import ambu.ui.componentes.PanelTransicion;
+import ambu.ui.PanelSolicitudCombustibleAdmin;
 
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
@@ -84,8 +85,8 @@ public class PanelInicioAdmin extends JPanel {
 
         PanelTicketAdmin panelTicketAdmin = new PanelTicketAdmin(usuario.getId());
         panelDerecho.add(panelTicketAdmin, "Registro Ticket");
-        PanelSolicitudCombustible panelTicketCombustible = new PanelSolicitudCombustible(usuario.getId(), usuario.getNomUsuario());
-        panelDerecho.add(panelTicketCombustible, "Ticket Combustible");
+        PanelSolicitudCombustibleAdmin panelTicketCombustibleAdmin = new PanelSolicitudCombustibleAdmin();
+        panelDerecho.add(panelTicketCombustibleAdmin, "Ticket Combustible");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();

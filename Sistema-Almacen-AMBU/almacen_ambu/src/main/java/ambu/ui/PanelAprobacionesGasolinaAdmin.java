@@ -147,56 +147,80 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         try { return Integer.parseInt(String.valueOf(v)); } catch (Exception ignore) { return null; }
     }
 
-    private void cargarCabeceras() {
-        // Carga TODOS los registros de control_combustible (del más reciente al más antiguo).
-        // Si deseas limitar (PENDIENTE solo), ajusta el WHERE.
-        new SwingWorker<java.util.List<CabeceraCombustibleRow>, Void>() {
-            @Override protected java.util.List<CabeceraCombustibleRow> doInBackground() throws Exception {
-                final String sql =
-                    "SELECT c.id_control_combustible, c.fecha, COALESCE(c.estado,'PENDIENTE') AS estado, " +
-                    "       COALESCE(u.nom_usuario, CAST(c.id_usuario_solicitante AS CHAR)) AS solicitante, " +
-                    "       c.vehiculo_maquinaria, c.placas, c.kilometraje, " +
-                    "       e.articulo AS combustible, c.cantidad_entregada, c.unidad_entregada " +
-                    "FROM control_combustible c " +
-                    "LEFT JOIN usuarios u   ON u.usuario_id = c.id_usuario_solicitante " +
-                    "LEFT JOIN existencias e ON e.id = c.id_existencia " +
-                    "ORDER BY c.fecha DESC";
-                try (Connection cn = DatabaseConnection.getConnection();
-                     PreparedStatement ps = cn.prepareStatement(sql);
-                     ResultSet rs = ps.executeQuery()) {
-                    java.util.List<CabeceraCombustibleRow> out = new ArrayList<>();
-                    while (rs.next()) {
-                        CabeceraCombustibleRow r = new CabeceraCombustibleRow();
-                        r.id = rs.getInt(1);
-                        Timestamp f = rs.getTimestamp(2);
-                        r.fecha = f != null ? new Date(f.getTime()) : null;
-                        r.estado = rs.getString(3);
-                        r.solicitante = rs.getString(4);
-                        r.vehiculo = rs.getString(5);
-                        r.placas = rs.getString(6);
-                        r.km = rs.getObject(7) != null ? rs.getInt(7) : null;
-                        r.combustible = rs.getString(8);
-                        r.cantidad = rs.getBigDecimal(9);
-                        r.unidad = rs.getString(10);
-                        out.add(r);
-                    }
-                    return out;
-                }
-            }
+private void cargarCabeceras() {
+    new SwingWorker<java.util.List<CabeceraCombustibleRow>, Void>() {
+        @Override protected java.util.List<CabeceraCombustibleRow> doInBackground() throws Exception {
+            final String sql =
+                "SELECT " +
+                "  c.id_control_combustible        AS id, " +
+                "  c.fecha                         AS fecha, " +
+                "  COALESCE(c.estado,'PENDIENTE')  AS estado, " +
+                "  COALESCE(u.nom_usuario, c.solicitante_externo) AS solicitante, " +
+                "  e.articulo                      AS combustible, " +
+                "  c.cantidad_entregada            AS cantidad, " +
+                "  c.unidad_entregada              AS unidad, " +
+                "  c.vehiculo_maquinaria           AS vehiculo, " +
+                "  c.placas                        AS placas, " +
+                "  c.kilometraje                   AS km " +
+                "FROM control_combustible c " +
+                "LEFT JOIN usuarios   u ON u.usuario_id   = c.id_usuario_solicitante " +
+                "LEFT JOIN existencias e ON e.id = c.id_existencia " +
+                // 👇 Ajusta estados existentes; agrega EN_PRESTAMO solo si ya lo tienes en el ENUM
+                "WHERE c.estado IN ('PENDIENTE','APROBADA','RECHAZADA') " +
+                "ORDER BY c.fecha DESC";
 
-            @Override protected void done() {
-                try {
-                    cabeceraModel.setData(get());
-                    detalleModel.clear();
-                    if (cabeceraModel.getRowCount() > 0) tblCabeceras.setRowSelectionInterval(0, 0);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(PanelAprobacionesGasolinaAdmin.this,
-                        "Error al cargar solicitudes de combustible.", "Error", JOptionPane.ERROR_MESSAGE);
+            try (Connection cn = DatabaseConnection.getConnection();
+                 PreparedStatement ps = cn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+
+                java.util.List<CabeceraCombustibleRow> out = new java.util.ArrayList<>();
+
+                while (rs.next()) {
+                    CabeceraCombustibleRow r = new CabeceraCombustibleRow();
+                    r.id          = rs.getInt("id");
+
+                    java.sql.Timestamp f = rs.getTimestamp("fecha");
+                    r.fecha       = (f != null) ? new java.util.Date(f.getTime()) : null;
+
+                    r.estado      = rs.getString("estado");
+
+                    r.solicitante = rs.getString("solicitante");
+                    if (r.solicitante == null || r.solicitante.trim().isEmpty()) {
+                        r.solicitante = "(Externo sin nombre)";
+                    }
+
+                    r.combustible = rs.getString("combustible");
+                    r.cantidad    = rs.getBigDecimal("cantidad");
+                    r.unidad      = rs.getString("unidad");
+                    r.vehiculo    = rs.getString("vehiculo");
+                    r.placas      = rs.getString("placas");
+
+                    Object kmObj  = rs.getObject("km");
+                    r.km          = (kmObj == null) ? null : ((Number) kmObj).intValue();
+
+                    out.add(r);
                 }
+                return out;
             }
-        }.execute();
-    }
+        }
+
+        @Override protected void done() {
+            try {
+                cabeceraModel.setData(get());
+                detalleModel.clear();
+                if (cabeceraModel.getRowCount() > 0) {
+                    tblCabeceras.setRowSelectionInterval(0, 0);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(PanelAprobacionesGasolinaAdmin.this,
+                    "Error al cargar solicitudes de combustible.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }.execute();
+}
+
+
 
     private void cargarDetalleSeleccionado() {
         Integer id = getIdSeleccionado();
@@ -290,8 +314,8 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
 
     private static final class CabeceraCombustibleModel extends AbstractTableModel {
         private final String[] cols = {
-                "ID", "Fecha", "Estado", "Solicitante", "Vehículo", "Placas",
-                "KM", "Combustible", "Cantidad", "Unidad"
+            "ID", "Fecha", "Estado", "Solicitante", "Combustible",
+            "Cantidad", "Unidad", "Vehículo", "Placas", "Km"
         };
         private final java.util.List<CabeceraCombustibleRow> data = new java.util.ArrayList<>();
 
@@ -314,27 +338,27 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         @Override public Object getValueAt(int r, int c) {
             CabeceraCombustibleRow x = data.get(r);
             switch (c) {
-                case 0: return x.id;
-                case 1: return x.fecha;
-                case 2: return x.estado;
-                case 3: return x.solicitante;
-                case 4: return x.vehiculo;
-                case 5: return x.placas;
-                case 6: return x.km;
-                case 7: return x.combustible;
-                case 8: return x.cantidad;
-                case 9: return x.unidad;
+                case 0: return x.id;          // ID
+                case 1: return x.fecha;       // Fecha
+                case 2: return x.estado;      // Estado
+                case 3: return x.solicitante; // Solicitante
+                case 4: return x.combustible; // Combustible
+                case 5: return x.cantidad;    // Cantidad
+                case 6: return x.unidad;      // Unidad
+                case 7: return x.vehiculo;    // Vehículo
+                case 8: return x.placas;      // Placas
+                case 9: return x.km;          // Km
                 default: return null;
             }
         }
 
         @Override public Class<?> getColumnClass(int c) {
             switch (c) {
-                case 0: return Integer.class;
-                case 1: return Date.class;
-                case 6: return Integer.class;
-                case 8: return java.math.BigDecimal.class;
-                default: return String.class;
+                case 0: return Integer.class;             // ID
+                case 1: return java.util.Date.class;      // Fecha
+                case 5: return java.math.BigDecimal.class;// Cantidad
+                case 9: return Integer.class;             // Km
+                default: return String.class;             // Estado, Solicitante, Combustible, Unidad, Vehículo, Placas
             }
         }
 
