@@ -35,6 +35,7 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
     private JButton btnAprobar;
     private JButton btnRechazar;
     private JButton btnRefrescar;
+    private JButton btnEntregar;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
@@ -77,7 +78,7 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         sorterCab = new TableRowSorter<>(cabeceraModel);
         tblCabeceras.setRowSorter(sorterCab);
         tblCabeceras.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) cargarDetalleSeleccionado();
+            if (!e.getValueIsAdjusting()) cargarDetalleSeleccionado(); actualizarBotonesSegunEstado();
         });
         JScrollPane spCab = new JScrollPane(tblCabeceras);
         spCab.setPreferredSize(new Dimension(10, 260));
@@ -105,6 +106,7 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         btnAprobar = new JButton(new AbstractAction("Aprobar") {
             @Override public void actionPerformed(ActionEvent e) { onAprobar(); }
         });
+
 
         acciones.add(btnRefrescar);
         acciones.add(btnRechazar);
@@ -165,8 +167,7 @@ private void cargarCabeceras() {
                 "FROM control_combustible c " +
                 "LEFT JOIN usuarios   u ON u.usuario_id   = c.id_usuario_solicitante " +
                 "LEFT JOIN existencias e ON e.id = c.id_existencia " +
-                // 👇 Ajusta estados existentes; agrega EN_PRESTAMO solo si ya lo tienes en el ENUM
-                "WHERE c.estado IN ('PENDIENTE','APROBADA','RECHAZADA') " +
+                "WHERE c.estado IN ('PENDIENTE','APROBADA','RECHAZADA', 'EN_PRESTAMO', 'CERRADA') " +
                 "ORDER BY c.fecha DESC";
 
             try (Connection cn = DatabaseConnection.getConnection();
@@ -269,6 +270,7 @@ private void cargarCabeceras() {
             @Override protected void done() {
                 try { get(); } catch (Exception ignore) {}
                 cargarCabeceras();
+                actualizarBotonesSegunEstado();
             }
         }.execute();
     }
@@ -291,9 +293,27 @@ private void cargarCabeceras() {
             @Override protected void done() {
                 try { get(); } catch (Exception ignore) {}
                 cargarCabeceras();
+                actualizarBotonesSegunEstado();
             }
         }.execute();
     }
+
+    private void actualizarBotonesSegunEstado() {
+        int vr = tblCabeceras.getSelectedRow();
+        boolean habilitarAprobar = false;
+        boolean habilitarRechazar = false;
+        if (vr >= 0) {
+            int mr = tblCabeceras.convertRowIndexToModel(vr);
+            CabeceraCombustibleRow row = cabeceraModel.data.get(mr);
+            String estado = (row.estado == null) ? "PENDIENTE" : row.estado.toUpperCase();
+
+            habilitarAprobar = "PENDIENTE".equals(estado);
+            habilitarRechazar = "PENDIENTE".equals(estado);
+        }
+        btnAprobar.setEnabled(habilitarAprobar);
+        btnRechazar.setEnabled(habilitarRechazar);
+    }
+
 
     // =====================
     // MODELOS DE TABLA

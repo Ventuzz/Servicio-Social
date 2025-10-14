@@ -25,7 +25,7 @@ public class HistorialService {
         try (Connection cn = DatabaseConnection.getConnection()) {
             out.addAll(querySolicitudes(cn, null));
             out.addAll(queryPrestamos(cn, null));
-            out.addAll(new HistorialServiceCombustiblePatch().mapearHistorialCombustibleGeneral(cn));
+
         }
         out.sort((a,b) -> {
             Timestamp ta = a.getFecha(), tb = b.getFecha();

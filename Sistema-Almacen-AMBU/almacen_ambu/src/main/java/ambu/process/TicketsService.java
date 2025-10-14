@@ -425,43 +425,194 @@ public class TicketsService {
         cn = DatabaseConnection.getConnection();
         cn.setAutoCommit(false);
 
-        if (aprobar) {
-            // 1) Leer cantidad e id_existencia del control (y bloquear fila de la existencia después)
-            Integer idExistencia = null;
-            java.math.BigDecimal cantidad = null;
+        // 0) Leer estado + datos necesarios y BLOQUEAR la fila del ticket
+        String estadoActual = null;
+        Integer idExistencia = null;
+        java.math.BigDecimal cantidad = null;
 
-            ps = cn.prepareStatement(
-                "SELECT id_existencia, cantidad_entregada " +
-                "FROM control_combustible WHERE id_control_combustible = ?"
-            );
-            ps.setInt(1, id);
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                idExistencia = (Integer) rs.getObject(1);
-                cantidad = rs.getBigDecimal(2);
+        ps = cn.prepareStatement(
+            "SELECT estado, id_existencia, cantidad_entregada " +
+            "FROM control_combustible " +
+            "WHERE id_control_combustible = ? FOR UPDATE"
+        );
+        ps.setInt(1, id);
+        rs = ps.executeQuery();
+        if (rs.next()) {
+            estadoActual = rs.getString("estado");
+            idExistencia = (Integer) rs.getObject("id_existencia");
+            cantidad = rs.getBigDecimal("cantidad_entregada");
+        } else {
+            throw new SQLException("No existe el ticket de combustible id=" + id);
+        }
+        rs.close(); rs = null;
+        ps.close(); ps = null;
+
+        // Normalizar estado nulo
+        if (estadoActual == null) estadoActual = "PENDIENTE";
+        final String estado = estadoActual.toUpperCase();
+
+        // 1) Reglas de negocio
+        if (!"PENDIENTE".equals(estado)) {
+            if (aprobar) {
+                // Ya movido no se puede volver a aprobar
+                throw new SQLException("El ticket ya no puede aprobarse (estado actual: " + estado + ").");
+            } else {
+                // Si ya está EN_PRESTAMO no puede rechazarse
+                if ("EN_PRESTAMO".equals(estado)) {
+                    throw new SQLException("Un ticket EN_PRESTAMO no puede rechazarse.");
+                } else {
+                    // RECHAZADA/APROBADA/CERRADA u otro estado distinto de PENDIENTE
+                    throw new SQLException("El ticket no está PENDIENTE (estado actual: " + estado + ").");
+                }
             }
-            rs.close(); rs = null;
-            ps.close(); ps = null;
+        }
 
-            // 2) Si hay existencia y cantidad, descontar stock (valida insuficiencia)
+        // 2) Si se aprueba desde PENDIENTE: descuenta inventario y pasa a EN_PRESTAMO
+        if (aprobar) {
             if (idExistencia != null && cantidad != null && cantidad.signum() > 0) {
+                // Valida insuficiencia y hace UPDATE atómico del stock
                 descontarStockExistencia(cn, idExistencia.intValue(), cantidad);
             }
 
-            // 3) Marcar como APROBADA
             ps = cn.prepareStatement(
-                "UPDATE control_combustible SET estado = 'APROBADA' WHERE id_control_combustible = ?"
+                "UPDATE control_combustible " +
+                "SET estado = 'EN_PRESTAMO' " + // <-- aquí el cambio de APROBADA a EN_PRESTAMO
+                "WHERE id_control_combustible = ? AND estado = 'PENDIENTE'"
             );
             ps.setInt(1, id);
-            ps.executeUpdate();
+            int updated = ps.executeUpdate();
             ps.close(); ps = null;
+
+            if (updated != 1) {
+                throw new SQLException("No se pudo aprobar/entregar: el ticket dejó de estar PENDIENTE.");
+            }
         } else {
-            // Solo rechaza (no toca inventario)
+            // 3) Rechazo solo si está PENDIENTE
             ps = cn.prepareStatement(
-                "UPDATE control_combustible SET estado = 'RECHAZADA' WHERE id_control_combustible = ?"
+                "UPDATE control_combustible " +
+                "SET estado = 'RECHAZADA' " +
+                "WHERE id_control_combustible = ? AND estado = 'PENDIENTE'"
             );
             ps.setInt(1, id);
-            ps.executeUpdate();
+            int updated = ps.executeUpdate();
+            ps.close(); ps = null;
+
+            if (updated != 1) {
+                throw new SQLException("No se pudo rechazar: el ticket dejó de estar PENDIENTE.");
+            }
+        }
+
+        cn.commit();
+    } catch (SQLException ex) {
+        if (cn != null) try { cn.rollback(); } catch (SQLException ignore) {}
+        throw ex;
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+        if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
+    }
+}
+
+
+    public void devolverCombustible(int idTicket,
+                                java.math.BigDecimal cantidadDevuelta,
+                                Long idUsuarioRecibeAlmacen,
+                                String unidadDevuelta) throws SQLException {
+
+    if (cantidadDevuelta == null || cantidadDevuelta.signum() <= 0) {
+        throw new IllegalArgumentException("La cantidad devuelta debe ser > 0.");
+    }
+
+    Connection cn = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+        cn = DatabaseConnection.getConnection();
+        cn.setAutoCommit(false);
+
+        // 1) Leer y BLOQUEAR ticket
+        String estado = null;
+        Integer idExistencia = null;
+        java.math.BigDecimal entregada = null;
+        java.math.BigDecimal devuelta = null;
+        String unidadEntregada = null;
+        String unidadDevueltaActual = null;
+
+        ps = cn.prepareStatement(
+            "SELECT estado, id_existencia, cantidad_entregada, cantidad_devuelta, " +
+            "       unidad_entregada, unidad_devuelta " +
+            "FROM control_combustible " +
+            "WHERE id_control_combustible = ? FOR UPDATE"
+        );
+        ps.setInt(1, idTicket);
+        rs = ps.executeQuery();
+        if (!rs.next()) throw new SQLException("No existe el ticket id=" + idTicket);
+
+        estado               = rs.getString("estado");
+        idExistencia         = (Integer) rs.getObject("id_existencia");
+        entregada            = rs.getBigDecimal("cantidad_entregada");
+        devuelta             = rs.getBigDecimal("cantidad_devuelta");
+        unidadEntregada      = rs.getString("unidad_entregada");
+        unidadDevueltaActual = rs.getString("unidad_devuelta");
+        rs.close(); rs = null; ps.close(); ps = null;
+
+        if (!"EN_PRESTAMO".equalsIgnoreCase(estado)) {
+            throw new SQLException("Solo puedes devolver cuando el ticket está EN_PRESTAMO (actual: " + estado + ").");
+        }
+        if (idExistencia == null || entregada == null) {
+            throw new SQLException("Datos incompletos del ticket (existencia/cantidad).");
+        }
+        if (devuelta == null) devuelta = java.math.BigDecimal.ZERO;
+
+        java.math.BigDecimal pendiente = entregada.subtract(devuelta);
+        if (cantidadDevuelta.compareTo(pendiente) > 0) {
+            throw new SQLException("La devolución (" + cantidadDevuelta + ") excede el pendiente (" + pendiente + ").");
+        }
+
+        // 2) Sumar al stock físico
+        sumarStockExistencia(cn, idExistencia.intValue(), cantidadDevuelta);
+
+        // 3) Actualizar acumulado + unidad + usuario receptor (+ fecha_devolucion si existe)
+        String unidadParaGuardar =
+                (unidadDevuelta != null && !unidadDevuelta.trim().isEmpty())
+                        ? unidadDevuelta.trim()
+                        : (unidadDevueltaActual != null && !unidadDevueltaActual.trim().isEmpty()
+                            ? unidadDevueltaActual
+                            : unidadEntregada);
+
+        boolean tieneFechaDevolucion = columnaExiste(cn, "control_combustible", "fecha_devolucion");
+
+        String sqlUpdate = "UPDATE control_combustible " +
+                "SET cantidad_devuelta = cantidad_devuelta + ?, " +
+                "    unidad_devuelta   = ?, " +
+                "    id_usuario_recibe_almacen = ? " +
+                (tieneFechaDevolucion ? ", fecha_devolucion = NOW() " : " ") +
+                "WHERE id_control_combustible = ? AND estado = 'EN_PRESTAMO'";
+
+        ps = cn.prepareStatement(sqlUpdate);
+        ps.setBigDecimal(1, cantidadDevuelta.setScale(3, java.math.RoundingMode.DOWN));
+        ps.setString(2, unidadParaGuardar);
+        if (idUsuarioRecibeAlmacen == null) {
+            ps.setNull(3, java.sql.Types.BIGINT);
+        } else {
+            ps.setLong(3, idUsuarioRecibeAlmacen.longValue());
+        }
+        ps.setInt(4, idTicket);
+        int upd = ps.executeUpdate();
+        ps.close(); ps = null;
+        if (upd != 1) throw new SQLException("No se pudo registrar la devolución (el estado cambió).");
+
+        // 4) Cerrar si saldó
+        java.math.BigDecimal nuevoPendiente = pendiente.subtract(cantidadDevuelta);
+        if (nuevoPendiente.signum() == 0) {
+            // Si tienes fecha_cierre/cerrado_por, puedes agregarlos aquí.
+            ps = cn.prepareStatement(
+                "UPDATE control_combustible SET estado = 'CERRADA' " +
+                "WHERE id_control_combustible = ? AND estado = 'EN_PRESTAMO'"
+            );
+            ps.setInt(1, idTicket);
+            if (ps.executeUpdate() != 1) throw new SQLException("No se pudo cerrar el ticket.");
             ps.close(); ps = null;
         }
 
@@ -475,6 +626,59 @@ public class TicketsService {
         if (cn != null) try { cn.setAutoCommit(true); cn.close(); } catch (SQLException ignore) {}
     }
 }
+
+/** Helper: verifica si una columna existe en la tabla actual del schema activo. */
+private boolean columnaExiste(Connection cn, String tabla, String columna) throws SQLException {
+    final String q = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                     "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+    try (PreparedStatement ps = cn.prepareStatement(q)) {
+        ps.setString(1, tabla);
+        ps.setString(2, columna);
+        try (ResultSet rs = ps.executeQuery()) {
+            rs.next();
+            return rs.getInt(1) > 0;
+        }
+    }
+}
+
+
+    // En TicketsService (mismo lugar donde está descontarStockExistencia)
+private void sumarStockExistencia(Connection cn, int idExistencia, java.math.BigDecimal cantidad) throws SQLException {
+    if (cn == null) throw new SQLException("Conexión nula.");
+    if (cantidad == null || cantidad.signum() <= 0) {
+        throw new IllegalArgumentException("La cantidad a sumar debe ser > 0.");
+    }
+
+    java.math.BigDecimal actual = null;
+
+    // 1) Bloquea la fila de existencias para evitar condiciones de carrera
+    try (PreparedStatement ps = cn.prepareStatement(
+            "SELECT cantidad_fisica FROM existencias WHERE id = ? FOR UPDATE")) {
+        ps.setInt(1, idExistencia);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+                throw new SQLException("No existe la existencia id=" + idExistencia);
+            }
+            actual = rs.getBigDecimal(1);
+        }
+    }
+
+    if (actual == null) actual = java.math.BigDecimal.ZERO;
+
+    // 2) Calcula el nuevo stock
+    java.math.BigDecimal nuevo = actual.add(cantidad).setScale(3, java.math.RoundingMode.DOWN);
+
+    // 3) Actualiza
+    try (PreparedStatement ps = cn.prepareStatement(
+            "UPDATE existencias SET cantidad_fisica = ? WHERE id = ?")) {
+        ps.setBigDecimal(1, nuevo);
+        ps.setInt(2, idExistencia);
+        int upd = ps.executeUpdate();
+        if (upd != 1) throw new SQLException("No se pudo actualizar el stock para id=" + idExistencia);
+    }
+}
+
+
 
     public void aprobarRechazarFluido(int id, boolean aprobar) throws SQLException {
         String nuevoEstado = aprobar ? "APROBADA" : "RECHAZADA";

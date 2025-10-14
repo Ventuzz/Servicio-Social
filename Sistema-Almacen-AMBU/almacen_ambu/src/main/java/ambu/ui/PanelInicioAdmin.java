@@ -10,6 +10,7 @@ import ambu.ui.PanelHistorial;
 import ambu.ui.componentes.CustomTabbedPaneUI;
 import ambu.ui.componentes.PanelTransicion;
 import ambu.ui.PanelSolicitudCombustibleAdmin;
+import ambu.ui.PanelHistorialGasolina;
 
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
@@ -61,7 +62,7 @@ public class PanelInicioAdmin extends JPanel {
         menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Gasolina", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial", new JPanel() {{ setOpaque(false); }});
-        
+        menuPestanas.addTab("Historial Gasolina", new JPanel() {{ setOpaque(false); }});
 
         // --- BOTÓN CERRAR SESIÓN ---
         JButton logoutButton = new JButton("Cerrar Sesión");
@@ -96,6 +97,7 @@ public class PanelInicioAdmin extends JPanel {
         PanelAprobacionesGasolinaAdmin panelAprobacionesGasolina = new PanelAprobacionesGasolinaAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
         panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
+        panelDerecho.add(new PanelHistorialGasolina(), "Historial Gasolina");
 
         // 5. LÓGICA DE CAMBIO DE PESTAÑA
         menuPestanas.addChangeListener(e -> {
@@ -109,6 +111,7 @@ public class PanelInicioAdmin extends JPanel {
                 case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;
                 case "Aprobaciones Gasolina": cardLayout.show(panelDerecho, "Aprobaciones Gasolina"); break;
                 case "Historial": cardLayout.show(panelDerecho, "Historial"); break;
+                case "Historial Gasolina": cardLayout.show(panelDerecho, "Historial Gasolina"); break;
             }
         });
 
