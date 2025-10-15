@@ -38,6 +38,7 @@ public class PanelHistorial extends JPanel {
     private JTextField campoBusqueda;
     private TableRowSorter<HistorialTableModel> sorter;
     private TicketsService ticketsService = new TicketsService(); 
+    private JButton btnExportar;
 
     public PanelHistorial(Usuario usuarioActual, boolean esVistaAdmin) {
         this.usuarioActual = usuarioActual;
@@ -126,6 +127,11 @@ public class PanelHistorial extends JPanel {
                 btnRegistrarDev.setForeground(Color.WHITE);
                 btnRegistrarDev.addActionListener(e -> registrarDevolucion());
                 panelAcciones.add(btnRegistrarDev);
+                btnExportar = new CustomButton("Exportar CSV");
+                btnExportar.setBackground(new Color(70, 130, 180));
+                btnExportar.setForeground(Color.WHITE);
+                btnExportar.addActionListener(e -> onExportar());
+                panelAcciones.add(btnExportar);
                 campoBusqueda.getDocument().addDocumentListener(new DocumentListener() {
                 @Override
                 public void insertUpdate(DocumentEvent e) { filtrarTabla(); }
@@ -238,7 +244,30 @@ public class PanelHistorial extends JPanel {
     );
 }
 
-        
+            private void onExportar() {
+    if (tablaHistorial.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+        return;
+    }
+    javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+    fc.setDialogTitle("Exportar historial");
+    fc.setSelectedFile(new java.io.File("historial.csv"));
+    int opt = fc.showSaveDialog(this);
+    if (opt != javax.swing.JFileChooser.APPROVE_OPTION) return;
+
+    java.io.File file = fc.getSelectedFile();
+    if (!file.getName().toLowerCase().endsWith(".csv")) {
+        file = new java.io.File(file.getParentFile(), file.getName() + ".csv");
+    }
+
+    try {
+        ambu.excel.CsvExporter.exportJTableToCSV(tablaHistorial, file);
+        JOptionPane.showMessageDialog(this, "Exportado a:\n" + file.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+    } catch (Exception ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al exportar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
 
         private void filtrarTabla() {
         String texto = campoBusqueda.getText();
@@ -251,7 +280,7 @@ public class PanelHistorial extends JPanel {
     }
 }
 
-
+    
 // Clase interna para el TableModel
 
 class HistorialTableModel extends AbstractTableModel {

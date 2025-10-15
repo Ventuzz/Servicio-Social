@@ -26,7 +26,7 @@ public class PanelHistorialGasolina extends JPanel {
     private final TicketsService service = new TicketsService();
     private JButton btnDevolver;
     private JButton btnRefrescar;
-
+    private JButton btnExportar;
     // Opcional: establece el usuario actual si quieres registrar quién recibe en almacén
     private Long currentUserId = null;
 
@@ -83,6 +83,20 @@ public class PanelHistorialGasolina extends JPanel {
 
         bottomBar.add(btnDevolver);
         bottomBar.add(btnRefrescar);
+
+        final Action exportAction = new AbstractAction("Exportar Excel") {
+    @Override public void actionPerformed(ActionEvent e) { onExportar(); }
+};
+
+btnExportar = new JButton(exportAction);
+// Mantén el estilo visual que usas para botones
+bottomBar.add(btnExportar);
+
+// Atajo Ctrl/Cmd+E
+int menuMask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // Cmd en mac, Ctrl en win/linux
+getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+    .put(KeyStroke.getKeyStroke(KeyEvent.VK_E, menuMask), "hist_export");
+getActionMap().put("hist_export", exportAction);
 
         add(new JScrollPane(tblHistorial), BorderLayout.CENTER);
         add(bottomBar, BorderLayout.SOUTH);
@@ -283,6 +297,32 @@ public class PanelHistorialGasolina extends JPanel {
         BigDecimal cantidadDevuelta;
         Date fechaDevolucion;
     }
+
+    private void onExportar() {
+    if (tblHistorial.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "No hay datos para exportar.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+        return;
+    }
+    javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+    fc.setDialogTitle("Exportar historial");
+    fc.setSelectedFile(new java.io.File("historial.csv"));
+    int opt = fc.showSaveDialog(this);
+    if (opt != javax.swing.JFileChooser.APPROVE_OPTION) return;
+
+    java.io.File file = fc.getSelectedFile();
+    if (!file.getName().toLowerCase().endsWith(".csv")) {
+        file = new java.io.File(file.getParentFile(), file.getName() + ".csv");
+    }
+
+    try {
+        ambu.excel.CsvExporter.exportJTableToCSV(tblHistorial, file);
+        JOptionPane.showMessageDialog(this, "Exportado a:\n" + file.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+    } catch (Exception ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al exportar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
+
 
     private static final class HistorialGasolinaModel extends AbstractTableModel {
         private final String[] cols = {

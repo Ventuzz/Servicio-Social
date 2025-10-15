@@ -1,19 +1,34 @@
 package ambu.ui;
 
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.util.function.Consumer;
+
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.border.EmptyBorder;
+
 import ambu.models.Usuario;
 import ambu.process.LoginService;
-
 import ambu.ui.componentes.CustomButton;
 import ambu.ui.componentes.CustomPasswordField;
 import ambu.ui.componentes.CustomTextField;
 import ambu.ui.componentes.PanelTransicion;
 import ambu.ui.dialog.RegistroDialog;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.util.function.Consumer;
 
 class RoundedPanel extends JPanel {
     private int cornerRadius = 25; 
@@ -57,7 +72,7 @@ public class PanelLogin extends RoundedPanel {
         loginButton = new CustomButton("Iniciar Sesión"); 
 
         JLabel registrarLabel = new JLabel("<html><U>Registrar nuevo usuario</U></html>");
-        registrarLabel.setForeground(Color.CYAN);
+        registrarLabel.setForeground(Color.BLACK);
         registrarLabel.setFont(new Font("Arial", Font.PLAIN, 12));
         registrarLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 

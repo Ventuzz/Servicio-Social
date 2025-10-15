@@ -117,20 +117,69 @@ public class PanelSolicitudCombustibleAdmin extends JPanel {
         txtUnidad = new JTextField(); // libre: "L", "LITROS", etc.
 
         int row = 0;
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0; form.add(new JLabel("Vehículo/Maquinaria:*"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1; form.add(txtVehiculo, gbc);
+Color labelColor = Color.WHITE; // color del texto
+Font boldFont = new Font("Arial", Font.BOLD, 12); // fuente negrita
+Color labelBackground = new Color(64, 64, 64); // fondo azul para resaltar
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0; form.add(new JLabel("Placas:*"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1; form.add(txtPlacas, gbc);
+// Vehículo/Maquinaria
+JLabel lblVehiculo = new JLabel("Vehículo/Maquinaria:*");
+lblVehiculo.setForeground(labelColor);
+lblVehiculo.setFont(boldFont);
+lblVehiculo.setOpaque(true);
+lblVehiculo.setBackground(labelBackground);
+lblVehiculo.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+form.add(lblVehiculo, gbc);
+gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1;
+form.add(txtVehiculo, gbc);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0; form.add(new JLabel("Kilometraje:*"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1; form.add(txtKilometraje, gbc);
+// Placas
+JLabel lblPlacas = new JLabel("Placas:*");
+lblPlacas.setForeground(labelColor);
+lblPlacas.setFont(boldFont);
+lblPlacas.setOpaque(true);
+lblPlacas.setBackground(labelBackground);
+lblPlacas.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+form.add(lblPlacas, gbc);
+gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1;
+form.add(txtPlacas, gbc);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0; form.add(new JLabel("Cantidad:*"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1; form.add(txtCantidad, gbc);
+// Kilometraje
+JLabel lblKilometraje = new JLabel("Kilometraje:*");
+lblKilometraje.setForeground(labelColor);
+lblKilometraje.setFont(boldFont);
+lblKilometraje.setOpaque(true);
+lblKilometraje.setBackground(labelBackground);
+lblKilometraje.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+form.add(lblKilometraje, gbc);
+gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1;
+form.add(txtKilometraje, gbc);
 
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0; form.add(new JLabel("Unidad:*"), gbc);
-        gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1; form.add(txtUnidad, gbc);
+// Cantidad
+JLabel lblCantidad = new JLabel("Cantidad:*");
+lblCantidad.setForeground(labelColor);
+lblCantidad.setFont(boldFont);
+lblCantidad.setOpaque(true);
+lblCantidad.setBackground(labelBackground);
+lblCantidad.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+form.add(lblCantidad, gbc);
+gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1;
+form.add(txtCantidad, gbc);
+
+// Unidad
+JLabel lblUnidad = new JLabel("Unidad:*");
+lblUnidad.setForeground(labelColor);
+lblUnidad.setFont(boldFont);
+lblUnidad.setOpaque(true);
+lblUnidad.setBackground(labelBackground);
+lblUnidad.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+form.add(lblUnidad, gbc);
+gbc.gridx = 1; gbc.gridy = row++; gbc.weightx = 1;
+form.add(txtUnidad, gbc);
 
         JButton btnEnviar = new JButton("Enviar solicitud");
         btnEnviar.addActionListener(e -> enviarSolicitud());

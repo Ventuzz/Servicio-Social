@@ -1,22 +1,36 @@
 package ambu.ui;
 
-import ambu.process.TicketsService;
-import ambu.process.CombustibleExistenciasService;
-import ambu.process.CombustibleExistenciasService.ExistenciaStockLite;
-import ambu.models.StockCombustibleTableModel;
-import ambu.ui.componentes.CustomButton;
-import ambu.ui.componentes.CustomTextField;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
 import java.util.function.BiConsumer;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.InputMap;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTable;
+import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+
+import ambu.process.CombustibleExistenciasService;
+import ambu.process.TicketsService;
+import ambu.ui.componentes.CustomButton;
+import ambu.ui.componentes.CustomTextField;
 
 public class PanelSolicitudCombustible extends JPanel {
 
@@ -27,8 +41,11 @@ public class PanelSolicitudCombustible extends JPanel {
 
     // --- Componentes de la UI ---
     private JTable tblStockCombustible;
-    private StockCombustibleTableModel stockModel;
+    private CombustiblesTableModel stockModel;
     private CustomTextField vehiculoField, placasField, kilometrajeField, cantidadField;
+    private static final java.awt.Color DK_BG  = new java.awt.Color(45, 45, 45);
+    private static final java.awt.Color DK_FG  = java.awt.Color.WHITE;
+    private static final java.awt.Color DK_BRD = new java.awt.Color(70, 70, 70);
     // Se elimina el JComboBox de combustible
     private JComboBox<String> comboUnidad;
 
@@ -36,7 +53,7 @@ public class PanelSolicitudCombustible extends JPanel {
         this.idSolicitante = idSolicitante;
         this.nombreSolicitante = nombreSolicitante;
         initUI();
-        cargarStockCombustibleAsync();
+        cargarStockAsync();
     }
 
     private void initUI() {
@@ -51,7 +68,7 @@ public class PanelSolicitudCombustible extends JPanel {
         Action refreshAction = new AbstractAction("Refrescar") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                cargarStockCombustibleAsync();
+                cargarStockAsync();
             }
         };
         JButton btnRefrescar = new CustomButton("Refrescar");
@@ -66,7 +83,7 @@ public class PanelSolicitudCombustible extends JPanel {
         panelInventario.setBorder(BorderFactory.createTitledBorder(""));
         panelInventario.add(panelTituloInventario, BorderLayout.NORTH);
 
-        stockModel = new StockCombustibleTableModel();
+        stockModel = new CombustiblesTableModel();
         tblStockCombustible = new JTable(stockModel);
         tblStockCombustible.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); // Permite seleccionar una fila
         panelInventario.add(new JScrollPane(tblStockCombustible), BorderLayout.CENTER);
@@ -95,22 +112,60 @@ public class PanelSolicitudCombustible extends JPanel {
         CustomButton btnEnviar = new CustomButton("Enviar Solicitud");
         btnEnviar.addActionListener(e -> enviarSolicitud());
 
-        final int[] fila = {0};
-        BiConsumer<String, JComponent> addRow = (labelText, component) -> {
-            gbc.gridx = 0; gbc.gridy = fila[0]; gbc.weightx = 0.2; gbc.anchor = GridBagConstraints.WEST;
-            panelFormulario.add(new JLabel(labelText), gbc);
-            gbc.gridx = 1; gbc.gridy = fila[0]; gbc.weightx = 0.8;
-            panelFormulario.add(component, gbc);
-            fila[0]++;
-        };
+final int[] fila = {0};
+BiConsumer<String, JComponent> addRow = (labelText, component) -> {
+    // Label estilizado oscuro
+    javax.swing.JLabel lbl = new javax.swing.JLabel(labelText);
+    setDarkLabel(lbl);
+
+    // Columna izquierda (label)
+    gbc.gridx = 0; 
+    gbc.gridy = fila[0]; 
+    gbc.weightx = 0.2; 
+    gbc.anchor = GridBagConstraints.WEST;
+    gbc.fill = GridBagConstraints.HORIZONTAL; // para que el fondo gris ocupe toda la celda
+    panelFormulario.add(lbl, gbc);
+
+    // Columna derecha (componente)
+    gbc.gridx = 1; 
+    gbc.gridy = fila[0]; 
+    gbc.weightx = 0.8; 
+    gbc.anchor = GridBagConstraints.WEST;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    panelFormulario.add(component, gbc);
+
+    fila[0]++;
+};
+
         
-        addRow.accept("Fecha:", new JLabel(new SimpleDateFormat("yyyy-MM-dd").format(new Date())));
-        addRow.accept("Solicitante:", new JLabel(nombreSolicitante));
-        addRow.accept("Vehículo/Maquinaria:", vehiculoField);
-        addRow.accept("Placas:", placasField);
-        addRow.accept("Kilometraje:", kilometrajeField);
-        addRow.accept("Cantidad:", cantidadField);
-        addRow.accept("Unidad:", comboUnidad);
+        javax.swing.JLabel fechaLbl = new javax.swing.JLabel(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
+setDark(fechaLbl);
+addRow.accept("Fecha:", fechaLbl);
+
+// Solicitante (JLabel)
+javax.swing.JLabel solicitanteLbl = new javax.swing.JLabel(nombreSolicitante);
+setDark(solicitanteLbl);
+addRow.accept("Solicitante:", solicitanteLbl);
+
+// Vehículo/Maquinaria (JTextField/JFormattedTextField)
+setDark(vehiculoField);
+addRow.accept("Vehículo/Maquinaria:", vehiculoField);
+
+// Placas
+setDark(placasField);
+addRow.accept("Placas:", placasField);
+
+// Kilometraje
+setDark(kilometrajeField);
+addRow.accept("Kilometraje:", kilometrajeField);
+
+// Cantidad
+setDark(cantidadField);
+addRow.accept("Cantidad:", cantidadField);
+
+// Unidad (JComboBox)
+setDarkCombo(comboUnidad);
+addRow.accept("Unidad:", comboUnidad);
         
         gbc.gridx = 1; gbc.gridy = fila[0]; gbc.anchor = GridBagConstraints.EAST;
         panelFormulario.add(btnEnviar, gbc);
@@ -126,25 +181,180 @@ public class PanelSolicitudCombustible extends JPanel {
         
         add(titleLabel, BorderLayout.NORTH);
         add(mainSplit, BorderLayout.CENTER);
+        aplicarTemaInputsOscuro(this);
     }
 
-    private void cargarStockCombustibleAsync() {
-        new SwingWorker<List<ExistenciaStockLite>, Void>() {
-            @Override
-            protected List<ExistenciaStockLite> doInBackground() throws Exception {
-                return combService.listarStockCombustible(null);
+    private void cargarStockAsync() {
+    new javax.swing.SwingWorker<java.util.List<CombustibleDisponible>, Void>() {
+        @Override protected java.util.List<CombustibleDisponible> doInBackground() throws Exception {
+            return fetchCombustiblesDisponibles();
+        }
+        @Override protected void done() {
+            try {
+                stockModel.setData(get());
+            } catch (Exception ex) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    PanelSolicitudCombustible.this,
+                    "No se pudo cargar el inventario: " + ex.getMessage(),
+                    "Error", javax.swing.JOptionPane.ERROR_MESSAGE
+                );
             }
-            @Override
-            protected void done() {
-                try {
-                    stockModel.setData(get());
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(PanelSolicitudCombustible.this, "Error al cargar el stock de combustible.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        }.execute();
+        }
+    }.execute();
+}
+
+private java.util.List<CombustibleDisponible> fetchCombustiblesDisponibles() throws java.sql.SQLException {
+    final String SQL =
+        "SELECT id, marca, articulo, ubicacion, cantidad_disponible " +
+        "FROM vw_inventario_disponible " +
+        "WHERE cantidad_disponible > 0 AND UPPER(uso) LIKE 'COMBUST%' " +
+        "ORDER BY articulo";
+
+    java.util.List<CombustibleDisponible> out = new java.util.ArrayList<>();
+    try (java.sql.Connection cn = ambu.mysql.DatabaseConnection.getConnection();
+         java.sql.PreparedStatement ps = cn.prepareStatement(SQL);
+         java.sql.ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            out.add(new CombustibleDisponible(
+                rs.getInt("id"),
+                rs.getString("marca"),
+                rs.getString("articulo"),
+                rs.getString("ubicacion"),
+                rs.getBigDecimal("cantidad_disponible")
+            ));
+        }
     }
-    
+    return out;
+}
+
+private static final class CombustibleDisponible {
+    final int id; final String marca, articulo, ubicacion; final java.math.BigDecimal disponible;
+    CombustibleDisponible(int id, String marca, String articulo, String ubicacion, java.math.BigDecimal disponible) {
+        this.id = id; this.marca = marca; this.articulo = articulo; this.ubicacion = ubicacion; this.disponible = disponible;
+    }
+}
+
+private static final class CombustiblesTableModel extends javax.swing.table.AbstractTableModel {
+    private final String[] cols = { "ID", "Marca", "Artículo", "Ubicación", "Disp." };
+    private final java.util.List<CombustibleDisponible> data = new java.util.ArrayList<>();
+    void setData(java.util.List<CombustibleDisponible> list) { data.clear(); if (list!=null) data.addAll(list); fireTableDataChanged(); }
+    CombustibleDisponible getAt(int r) { return data.get(r); }
+    @Override public int getRowCount() { return data.size(); }
+    @Override public int getColumnCount() { return cols.length; }
+    @Override public String getColumnName(int c) { return cols[c]; }
+    @Override public Object getValueAt(int r, int c) {
+        CombustibleDisponible x = data.get(r);
+        switch (c) {
+            case 0: return x.id;
+            case 1: return x.marca;
+            case 2: return x.articulo;
+            case 3: return x.ubicacion;
+            case 4: return x.disponible; 
+            default: return null;
+        }
+    }
+    @Override public Class<?> getColumnClass(int c) {
+        return c==0 ? Integer.class : (c==4 ? java.math.BigDecimal.class : String.class);
+    }
+    @Override public boolean isCellEditable(int r,int c){ return false; }
+}
+
+    private void aplicarTemaInputsOscuro(java.awt.Component root) {
+    if (root instanceof javax.swing.text.JTextComponent) {
+        javax.swing.text.JTextComponent t = (javax.swing.text.JTextComponent) root;
+        t.setBackground(DK_BG);
+        t.setForeground(DK_FG);
+        t.setCaretColor(DK_FG);
+        t.setSelectedTextColor(DK_BG);
+        t.setSelectionColor(new java.awt.Color(200,200,200));
+        t.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createLineBorder(DK_BRD),
+            javax.swing.BorderFactory.createEmptyBorder(6,8,6,8)
+        ));
+        t.setOpaque(true);
+    } else if (root instanceof javax.swing.JComboBox) {
+        javax.swing.JComboBox<?> cb = (javax.swing.JComboBox<?>) root;
+        cb.setBackground(DK_BG);
+        cb.setForeground(DK_FG);
+        cb.setOpaque(true);
+    } else if (root instanceof javax.swing.JSpinner) {
+        javax.swing.JSpinner sp = (javax.swing.JSpinner) root;
+        sp.getEditor().setBackground(DK_BG);
+        sp.getEditor().setForeground(DK_FG);
+    }
+
+    if (root instanceof java.awt.Container) {
+        for (java.awt.Component c : ((java.awt.Container) root).getComponents()) {
+            aplicarTemaInputsOscuro(c);
+        }
+    }
+}
+
+private void setDarkLabel(javax.swing.JLabel l) {
+    l.setOpaque(true);
+    l.setBackground(DK_BG);
+    l.setForeground(DK_FG);
+    l.setFont(l.getFont().deriveFont(java.awt.Font.BOLD));
+    l.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+        javax.swing.BorderFactory.createLineBorder(DK_BRD),
+        javax.swing.BorderFactory.createEmptyBorder(6,8,6,8) // padding
+    ));
+}
+
+    private void setDark(JComponent c) {
+    c.setBackground(DK_BG);
+    c.setForeground(DK_FG);
+    c.setOpaque(true);
+
+    if (c instanceof javax.swing.text.JTextComponent) {
+        javax.swing.text.JTextComponent t = (javax.swing.text.JTextComponent) c;
+        t.setCaretColor(DK_FG);
+        t.setSelectedTextColor(DK_BG);
+        t.setSelectionColor(new java.awt.Color(200,200,200));
+        t.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createLineBorder(DK_BRD),
+            javax.swing.BorderFactory.createEmptyBorder(6,8,6,8)
+        ));
+    }
+
+    if (c instanceof javax.swing.JLabel) {
+        // Un poco de padding para que el gris se vea bien
+        javax.swing.JLabel l = (javax.swing.JLabel) c;
+        if (l.getBorder() == null) {
+            l.setBorder(javax.swing.BorderFactory.createEmptyBorder(6,8,6,8));
+        }
+    }
+}
+
+@SuppressWarnings("serial")
+private void setDarkCombo(javax.swing.JComboBox<?> combo) {
+    combo.setBackground(DK_BG);
+    combo.setForeground(DK_FG);
+    combo.setOpaque(true);
+
+    combo.setRenderer(new javax.swing.DefaultListCellRenderer() {
+        @Override public java.awt.Component getListCellRendererComponent(
+                javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            javax.swing.JLabel l = (javax.swing.JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (isSelected) {
+                // respeta colores de selección del LAF
+                l.setOpaque(true);
+            } else {
+                l.setBackground(DK_BG);
+                l.setForeground(DK_FG);
+                l.setOpaque(true);
+            }
+            return l;
+        }
+    });
+
+    if (combo.isEditable()) {
+        java.awt.Component editor = combo.getEditor().getEditorComponent();
+        if (editor instanceof JComponent) setDark((JComponent) editor);
+    }
+}
+
+
     private void enviarSolicitud() {
     // --- 1. Selección en la tabla (vista) ---
     int viewRow = tblStockCombustible.getSelectedRow();
@@ -216,7 +426,7 @@ public class PanelSolicitudCombustible extends JPanel {
                         placasField.setText("");
                         kilometrajeField.setText("");
                         cantidadField.setText("");
-                        cargarStockCombustibleAsync();
+                        cargarStockAsync();
                     } else {
                         throw new Exception("El servicio devolvió 'false'.");
                     }
