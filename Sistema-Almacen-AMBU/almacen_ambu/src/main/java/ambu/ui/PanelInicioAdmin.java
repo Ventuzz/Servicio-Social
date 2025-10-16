@@ -57,12 +57,15 @@ public class PanelInicioAdmin extends JPanel {
         
         menuPestanas.addTab("Registro Ticket", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Ticket Combustible", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Ticket Fluidos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Usuarios", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Inventario", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Gasolina", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Aprobaciones Fluidos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial Gasolina", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Historial Fluidos", new JPanel() {{ setOpaque(false); }});
 
         // --- BOTÓN CERRAR SESIÓN ---
         JButton logoutButton = new JButton("Cerrar Sesión");
@@ -88,6 +91,8 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.add(panelTicketAdmin, "Registro Ticket");
         PanelSolicitudCombustibleAdmin panelTicketCombustibleAdmin = new PanelSolicitudCombustibleAdmin();
         panelDerecho.add(panelTicketCombustibleAdmin, "Ticket Combustible");
+        PanelSolicitudFluidos panelTicketFluidosAdmin = new PanelSolicitudFluidos();
+        panelDerecho.add(panelTicketFluidosAdmin, "Ticket Fluidos");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();
@@ -96,8 +101,11 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.add(panelAprobaciones, "Aprobaciones");
         PanelAprobacionesGasolinaAdmin panelAprobacionesGasolina = new PanelAprobacionesGasolinaAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
+        PanelAprobacionesFluidosAdmin panelAprobacionesFluidos = new PanelAprobacionesFluidosAdmin();
+        panelDerecho.add(panelAprobacionesFluidos, "Aprobaciones Fluidos");
         panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
         panelDerecho.add(new PanelHistorialGasolina(), "Historial Gasolina");
+        panelDerecho.add(new PanelHistorialAceites(), "Historial Fluidos");
 
         // 5. LÓGICA DE CAMBIO DE PESTAÑA
         menuPestanas.addChangeListener(e -> {
@@ -106,12 +114,15 @@ public class PanelInicioAdmin extends JPanel {
             switch (tituloPestana) {
                 case "Registro Ticket": cardLayout.show(panelDerecho, "Registro Ticket"); break;
                 case "Ticket Combustible": cardLayout.show(panelDerecho, "Ticket Combustible"); break;
+                case "Ticket Fluidos": cardLayout.show(panelDerecho, "Ticket Fluidos"); break;
                 case "Usuarios": cardLayout.show(panelDerecho, "Usuarios"); break;
                 case "Inventario": cardLayout.show(panelDerecho, "Inventario"); break;
                 case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;
                 case "Aprobaciones Gasolina": cardLayout.show(panelDerecho, "Aprobaciones Gasolina"); break;
+                case "Aprobaciones Fluidos": cardLayout.show(panelDerecho, "Aprobaciones Fluidos"); break;
                 case "Historial": cardLayout.show(panelDerecho, "Historial"); break;
                 case "Historial Gasolina": cardLayout.show(panelDerecho, "Historial Gasolina"); break;
+                case "Historial Fluidos": cardLayout.show(panelDerecho, "Historial Fluidos"); break;
             }
         });
 

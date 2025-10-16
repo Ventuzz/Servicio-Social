@@ -6,6 +6,7 @@
 // ================================================
 package ambu.ui;
 
+import ambu.mysql.DatabaseConnection;
 import ambu.process.TicketsService;
 import ambu.process.TicketsService.DisponibleItem;
 import ambu.process.TicketsService.ItemSolicitado;
@@ -20,6 +21,9 @@ import java.awt.event.ActionEvent;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -234,18 +238,30 @@ public class PanelTicketAdmin extends JPanel {
             items.add(new ItemSolicitado(c.idExistencia, c.cantidad, c.unidad, c.obs));
         }
 
-        new SwingWorker<Integer, Void>() {
-            @Override protected Integer doInBackground() throws Exception {
-                // Si el texto es un número, interpretamos como ID de usuario registrado
+new SwingWorker<Integer, Void>() {
+    @Override 
+    protected Integer doInBackground() throws Exception {
+        String solicitanteInput = txtSolicitanteLibre.getText().trim();
+        Long idSolicitante = null;
+
                 try {
-                    long idSolicitante = Long.parseLong(solicitanteInput);
-                    return service.crearSolicitud(idSolicitante, idJefe, items);
+                    idSolicitante = Long.parseLong(solicitanteInput);
                 } catch (NumberFormatException nfe) {
-                    // Nombre libre (usuario no registrado)
+                }
+
+                if (idSolicitante == null) {
+                    idSolicitante = resolveUsuarioIdByNombre(solicitanteInput);
+                }
+
+                if (idSolicitante != null) {
+                    return service.crearSolicitud(idSolicitante, idJefe, items);
+                } else {
                     return service.crearSolicitudExterna(solicitanteInput, idJefe, items);
                 }
             }
-            @Override protected void done() {
+
+            @Override 
+            protected void done() {
                 try {
                     Integer idSolicitud = get();
                     JOptionPane.showMessageDialog(PanelTicketAdmin.this,
@@ -267,6 +283,18 @@ public class PanelTicketAdmin extends JPanel {
         JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    public Long resolveUsuarioIdByNombre(String nombre) throws SQLException {
+        if (nombre == null || nombre.trim().isEmpty()) return null;
+        final String sql = "SELECT usuario_id FROM usuarios WHERE UPPER(nom_usuario)=UPPER(?) LIMIT 1";
+        try (Connection cn = DatabaseConnection.getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nombre.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+                return null;
+            }
+        }
+    }
     // ===================== Modelos de tabla =====================
     private static class DisponiblesTableModel extends AbstractTableModel {
         private final String[] cols = {"Marca","Artículo","Ubicación","Disp."};
