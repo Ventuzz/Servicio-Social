@@ -169,31 +169,25 @@ public class PanelSolicitudFluidos extends JPanel {
             return;
         }
 
-        // --- LÓGICA CORREGIDA PARA RESOLVER EL SOLICITANTE ---
         new SwingWorker<Void, String>() {
             @Override
             protected Void doInBackground() throws Exception {
                 Long idUsuario = null;
                 String solicitanteExterno = null;
 
-                // 1. Intentar resolver como ID numérico
                 try {
                     idUsuario = Long.parseLong(solicitanteInput);
                 } catch (NumberFormatException nfe) {
-                    // No es un número, continuar para buscar por nombre
                 }
 
-                // 2. Si no es un ID, intentar resolver por nombre
                 if (idUsuario == null) {
                     idUsuario = service.resolveUsuarioIdByNombre(solicitanteInput);
                 }
 
-                // 3. Si sigue siendo null, es un solicitante externo
                 if (idUsuario == null) {
                     solicitanteExterno = solicitanteInput;
                 }
 
-                // Llamar al servicio con los valores resueltos
                 service.crearSolicitudFluido(new Date(), vehiculo, placas, sel.getId(), cantidad, unidad,
                         idUsuario, solicitanteExterno);
                 return null;

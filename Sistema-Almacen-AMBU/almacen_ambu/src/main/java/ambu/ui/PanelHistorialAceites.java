@@ -15,9 +15,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Historial de aceites/anticongelantes (similar a PanelHistorialGasolina, con exportación CSV y devoluciones).
- */
+
 public class PanelHistorialAceites extends JPanel {
 
     private JTable table;

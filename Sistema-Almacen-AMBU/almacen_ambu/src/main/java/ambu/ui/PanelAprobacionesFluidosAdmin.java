@@ -12,10 +12,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.*;
 
-/**
- * Aprobaciones – Aceites/Anticongelantes (similar a PanelAprobacionesGasolinaAdmin)
- * NOTA: Las devoluciones ahora se gestionan en PanelHistorialAceites.
- */
+
 public class PanelAprobacionesFluidosAdmin extends JPanel {
 
     private final FluidosService service = new FluidosService();

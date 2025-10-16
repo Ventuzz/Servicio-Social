@@ -7,10 +7,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Servicio JDBC para el flujo de ACEITES/ANTICONGELANTES.
- * Compatible con Java 11.
- */
+
 public class FluidosService {
 
     // ======== DTOs ========
