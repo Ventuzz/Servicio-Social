@@ -15,7 +15,10 @@ public class PanelInicioUsuario extends JPanel {
 
     private static final int TAB_SOLICITUD = 0;
     private static final int TAB_COMBUSTIBLE = 1;
-    private static final int TAB_HISTORIAL = 2;
+    private static final int TAB_FLUIDOS = 2;
+    private static final int TAB_HISTORIAL_INSUMOS = 3;
+    private static final int TAB_HISTORIAL_GASOLINA = 4;
+    private static final int TAB_HISTORIAL_FLUIDOS = 5;
 
     // Constructor de compatibilidad (sin manejador explícito de logout)
     public PanelInicioUsuario(Usuario usuarioActual) {
@@ -65,8 +68,11 @@ public class PanelInicioUsuario extends JPanel {
         
         menuPestanas.addTab("Solicitud de Material", panelClear(new BorderLayout()));
         menuPestanas.addTab("Solicitud de Combustible", panelClear(new BorderLayout()));
-        menuPestanas.addTab("Historial", panelClear(new BorderLayout()));
-        
+        menuPestanas.addTab("Solicitud de Fluidos", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Historial Insumos", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Historial Gasolina", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Historial Fluidos", panelClear(new BorderLayout()));
+
         // --- BOTÓN CERRAR SESIÓN ---
         JButton logoutButton = crearBoton("Cerrar Sesión");
         logoutButton.setBackground(new Color(150, 40, 40)); // Un rojo más oscuro
@@ -118,11 +124,20 @@ public class PanelInicioUsuario extends JPanel {
             case TAB_SOLICITUD:
                 contentPanel.add(buildSolicitudView(), BorderLayout.CENTER);
                 break;
-            case TAB_HISTORIAL:
-                contentPanel.add(buildHistorialView(), BorderLayout.CENTER);
-                break;
             case TAB_COMBUSTIBLE:
                 contentPanel.add(new PanelSolicitudCombustible(usuarioActual.getId(), usuarioActual.getNomUsuario()), BorderLayout.CENTER);
+                break;
+            case TAB_FLUIDOS:
+                contentPanel.add(new PanelSolicitudFluidosUsuario(usuarioActual.getId()), BorderLayout.CENTER);
+                break;
+            case TAB_HISTORIAL_INSUMOS:
+                contentPanel.add(new PanelHistorialInsumosUsuario(usuarioActual.getId()), BorderLayout.CENTER);
+                break;
+            case TAB_HISTORIAL_GASOLINA:
+                contentPanel.add(new PanelHistorialGasolinaUsuario(usuarioActual.getId()), BorderLayout.CENTER);
+                break;
+            case TAB_HISTORIAL_FLUIDOS:
+                contentPanel.add(new PanelHistorialFluidosUsuario(usuarioActual.getId()), BorderLayout.CENTER);
                 break;
             default:
                 contentPanel.add(new JLabel("Sección no disponible"), BorderLayout.CENTER);
