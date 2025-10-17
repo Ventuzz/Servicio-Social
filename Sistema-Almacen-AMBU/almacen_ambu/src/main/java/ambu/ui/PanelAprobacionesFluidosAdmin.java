@@ -143,10 +143,17 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
     }
 
     private void actualizarBotones() {
-        Integer id = getIdSeleccionado();
-        boolean has = id != null;
-        btnAprobar.setEnabled(has); btnRechazar.setEnabled(has);
+    boolean enable = false;
+    int viewRow = tblCabeceras.getSelectedRow();
+    if (viewRow >= 0) {
+        int modelRow = tblCabeceras.convertRowIndexToModel(viewRow);
+        String estado = String.valueOf(cabeceraModel.getValueAt(modelRow, 2));
+        enable = !( "EN_PRESTAMO".equalsIgnoreCase(estado) || "CERRADA".equalsIgnoreCase(estado) );
+        // enable = "PENDIENTE".equalsIgnoreCase(estado);
     }
+    btnAprobar.setEnabled(enable);
+    btnRechazar.setEnabled(enable);
+}
 
     // ====== Modelos ======
     private static class CabeceraModel extends AbstractTableModel {

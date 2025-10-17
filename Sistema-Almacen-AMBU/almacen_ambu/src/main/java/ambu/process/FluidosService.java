@@ -80,6 +80,17 @@ public class FluidosService {
         }
     }
 
+    public boolean existeUsuarioId(long usuarioId) throws SQLException {
+    final String sql = "SELECT 1 FROM usuarios WHERE usuario_id = ? LIMIT 1";
+    try (Connection cn = ambu.mysql.DatabaseConnection.getConnection();
+         PreparedStatement ps = cn.prepareStatement(sql)) {
+        ps.setLong(1, usuarioId);
+        try (ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
+    }
+}
+
     // ======== Crear solicitud (ticket) ========
     public void crearSolicitudFluido(java.util.Date fecha,
                                      String vehiculo,

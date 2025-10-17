@@ -63,7 +63,7 @@ public class PanelInicioAdmin extends JPanel {
         menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Gasolina", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Fluidos", new JPanel() {{ setOpaque(false); }});
-        menuPestanas.addTab("Historial", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Historial Insumos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial Gasolina", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial Fluidos", new JPanel() {{ setOpaque(false); }});
 
@@ -103,7 +103,7 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
         PanelAprobacionesFluidosAdmin panelAprobacionesFluidos = new PanelAprobacionesFluidosAdmin();
         panelDerecho.add(panelAprobacionesFluidos, "Aprobaciones Fluidos");
-        panelDerecho.add(new PanelHistorial(usuario, true), "Historial");
+        panelDerecho.add(new PanelHistorialInsumosAdministrador(), "Historial Insumos");
         panelDerecho.add(new PanelHistorialGasolina(), "Historial Gasolina");
         panelDerecho.add(new PanelHistorialAceites(), "Historial Fluidos");
 
@@ -120,7 +120,7 @@ public class PanelInicioAdmin extends JPanel {
                 case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;
                 case "Aprobaciones Gasolina": cardLayout.show(panelDerecho, "Aprobaciones Gasolina"); break;
                 case "Aprobaciones Fluidos": cardLayout.show(panelDerecho, "Aprobaciones Fluidos"); break;
-                case "Historial": cardLayout.show(panelDerecho, "Historial"); break;
+                case "Historial Insumos": cardLayout.show(panelDerecho, "Historial Insumos"); break;
                 case "Historial Gasolina": cardLayout.show(panelDerecho, "Historial Gasolina"); break;
                 case "Historial Fluidos": cardLayout.show(panelDerecho, "Historial Fluidos"); break;
             }
