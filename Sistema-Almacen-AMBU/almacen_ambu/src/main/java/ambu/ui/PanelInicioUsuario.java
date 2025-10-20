@@ -66,7 +66,7 @@ public class PanelInicioUsuario extends JPanel {
         menuPestanas.setUI(new CustomTabbedPaneUI());
         menuPestanas.setMinimumSize(new Dimension(0, 0));
         
-        menuPestanas.addTab("Solicitud de Material", panelClear(new BorderLayout()));
+        menuPestanas.addTab("Solicitud de Insumos", panelClear(new BorderLayout()));
         menuPestanas.addTab("Solicitud de Combustible", panelClear(new BorderLayout()));
         menuPestanas.addTab("Solicitud de Fluidos", panelClear(new BorderLayout()));
         menuPestanas.addTab("Historial Insumos", panelClear(new BorderLayout()));

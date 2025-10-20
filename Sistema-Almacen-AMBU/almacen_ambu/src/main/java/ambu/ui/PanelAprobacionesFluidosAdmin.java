@@ -27,6 +27,7 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
     private JButton btnAprobar;
     private JButton btnRechazar;
     private JButton btnRefrescar;
+    private JTextField txtBuscar;
 
     public PanelAprobacionesFluidosAdmin() {
         buildUI();
@@ -37,10 +38,31 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
         setLayout(new BorderLayout(12, 12));
         setBorder(new EmptyBorder(12, 12, 12, 12));
 
-        JLabel titulo = new JLabel("Aprobaciones – Aceites y Anticongelantes");
+        JLabel titulo = new JLabel("Aprobaciones – Tickets de Aceites y Anticongelantes", SwingConstants.CENTER);
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
-        add(titulo, BorderLayout.NORTH);
 
+        // === Zona superior con TÍTULO + BÚSQUEDA ===
+        JPanel north = new JPanel(new BorderLayout(8, 8));
+        north.add(titulo, BorderLayout.NORTH);
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.add(new JLabel("Buscar:"), BorderLayout.WEST);
+        txtBuscar = new JTextField(40);                        // ancho sugerido
+        txtBuscar.setPreferredSize(new Dimension(0, 20));      // alto de la barra
+        txtBuscar.setMargin(new Insets(6, 10, 6, 10));         
+        header.add(txtBuscar, BorderLayout.CENTER);
+        north.add(header, BorderLayout.SOUTH);
+
+        add(north, BorderLayout.NORTH);
+        // Listener de búsqueda
+        txtBuscar.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroFluidos(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroFluidos(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroFluidos(); }
+        });
+
+        // Filtro de búsqueda
+        
+        // === Zona central con TABLAS ===
         cabeceraModel = new CabeceraModel();
         tblCabeceras = new JTable(cabeceraModel);
         tblCabeceras.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -69,8 +91,95 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
         });
         acciones.add(btnRefrescar); acciones.add(btnAprobar); acciones.add(btnRechazar);
         add(acciones, BorderLayout.SOUTH);
-
         actualizarBotones();
+    }
+
+    private void aplicarFiltroFluidos() {
+        if (sorter == null) return;
+
+        String q = (txtBuscar != null) ? txtBuscar.getText() : null;
+        if (q == null || q.trim().isEmpty()) { sorter.setRowFilter(null); return; }
+
+        final String[] tokens = q.trim().split("\\s+");
+        sorter.setRowFilter(new javax.swing.RowFilter<Object,Object>() {
+            @Override
+            public boolean include(Entry<?, ?> entry) {
+                // AND entre tokens: cada palabra debe coincidir en alguna columna
+                for (String raw : tokens) {
+                    final boolean exact = raw.startsWith("#");         // #123 -> coincidencia exacta (útil para ID)
+                    final String token = (exact ? raw.substring(1) : raw).toLowerCase();
+                    boolean ok = false;
+                    for (int c = 0; c < entry.getValueCount(); c++) {
+                        if (matchesToken(entry.getValue(c), token, exact)) { ok = true; break; }
+                    }
+                    if (!ok) return false;
+                }
+                return true;
+            }
+        });
+    }
+
+    private boolean matchesToken(Object value, String token, boolean exact) {
+        if (value == null || token.isEmpty()) return false;
+
+        // Números / IDs
+        if (value instanceof Number) {
+            String n = normalizeNumber((Number) value);
+            return exact ? n.equalsIgnoreCase(token) : n.toLowerCase().contains(token);
+        }
+
+        // Fechas java.util.Date
+        if (value instanceof java.util.Date) {
+            for (String s : formatDateVariants((java.util.Date) value)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+
+        // java.time.*
+        if (value instanceof java.time.LocalDate) {
+            for (String s : formatDateVariants((java.time.LocalDate) value)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+        if (value instanceof java.time.LocalDateTime) {
+            java.time.LocalDate d = ((java.time.LocalDateTime) value).toLocalDate();
+            for (String s : formatDateVariants(d)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+        if (value instanceof java.time.OffsetDateTime) {
+            java.time.LocalDate d = ((java.time.OffsetDateTime) value).toLocalDate();
+            for (String s : formatDateVariants(d)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+
+        String s = String.valueOf(value);
+        return exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token);
+    }
+
+    private String normalizeNumber(Number n) {
+        return new java.math.BigDecimal(n.toString()).stripTrailingZeros().toPlainString();
+    }
+
+    private java.util.List<String> formatDateVariants(java.util.Date d) {
+        java.util.List<String> out = new java.util.ArrayList<>(3);
+        out.add(new java.text.SimpleDateFormat("dd/MM/yyyy").format(d));
+        out.add(new java.text.SimpleDateFormat("yyyy-MM-dd").format(d));
+        out.add(new java.text.SimpleDateFormat("dd-MM-yyyy").format(d));
+        return out;
+    }
+
+    private java.util.List<String> formatDateVariants(java.time.LocalDate d) {
+        java.util.List<String> out = new java.util.ArrayList<>(3);
+        out.add(d.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        out.add(d.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)); // yyyy-MM-dd
+        out.add(d.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        return out;
     }
 
     private Integer getIdSeleccionado() {
@@ -153,7 +262,9 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
     }
     btnAprobar.setEnabled(enable);
     btnRechazar.setEnabled(enable);
-}
+    }
+
+    
 
     // ====== Modelos ======
     private static class CabeceraModel extends AbstractTableModel {

@@ -41,9 +41,9 @@ public class PanelSolicitudCombustibleAdmin extends JPanel {
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
         setBorder(new EmptyBorder(16, 16, 16, 16));
-        setOpaque(false);
 
-        JLabel titulo = new JLabel("Solicitud de Combustible (Administración)");
+
+        JLabel titulo = new JLabel("Generar Solicitud de Combustible", SwingConstants.CENTER);
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
         add(titulo, BorderLayout.NORTH);
 

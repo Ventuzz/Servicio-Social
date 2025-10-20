@@ -49,6 +49,9 @@ public class PanelSolicitudFluidos extends JPanel {
         private void buildUI() {
         setLayout(new BorderLayout(12, 12));
         setBorder(new EmptyBorder(12, 12, 12, 12));
+        JLabel titulo = new JLabel("Generar Solicitud de Aceites y Anticongelantes", SwingConstants.CENTER);
+        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 20f));
+        add(titulo, BorderLayout.NORTH);
 
         // === Panel inventario ===
         JPanel panelInventario = new JPanel(new BorderLayout(8,8));
@@ -104,7 +107,7 @@ public class PanelSolicitudFluidos extends JPanel {
         gbc.gridx=0; gbc.gridy=row; gbc.weightx=0; form.add(l4, gbc);
         gbc.gridx=1; gbc.gridy=row++; gbc.weightx=1; form.add(cbUnidad, gbc);
 
-        JButton btnGuardar = new CustomButton("Guardar solicitud");
+        JButton btnGuardar = new CustomButton("Enviar Solicitud");
         btnGuardar.addActionListener(this::onGuardar);
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));

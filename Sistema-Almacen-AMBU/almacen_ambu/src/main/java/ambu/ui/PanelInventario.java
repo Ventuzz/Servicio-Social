@@ -71,8 +71,8 @@ public class PanelInventario extends JPanel {
         panelSur.setBorder(new EmptyBorder(10, 0, 0, 0));
 
         // Barra de búsqueda (izquierda)
-        searchField = new CustomTextField(25);
-        panelSur.add(searchField, BorderLayout.WEST);
+        searchField = new CustomTextField(20);
+        panelSur.add(searchField, BorderLayout.NORTH);
 
         // Botones (derecha)
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
