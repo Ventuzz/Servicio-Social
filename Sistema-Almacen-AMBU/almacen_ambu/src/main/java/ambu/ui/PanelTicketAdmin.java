@@ -56,7 +56,7 @@ public class PanelTicketAdmin extends JPanel {
         setLayout(new BorderLayout(8,8));
         setBorder(new EmptyBorder(12,12,12,12));
 
-        JLabel titulo = new JLabel("Generar solicitud a nombre de otra persona");
+        JLabel titulo = new JLabel("Generar Solicitud de Insumos", SwingConstants.CENTER);
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
         add(titulo, BorderLayout.NORTH);
 

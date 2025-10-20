@@ -52,7 +52,7 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
         setBorder(new EmptyBorder(12, 12, 12, 12));
 
         // --- Título ---
-        JLabel titulo = new JLabel("Aprobaciones – Gasolina", SwingConstants.LEFT);
+        JLabel titulo = new JLabel("Aprobaciones – Tickets de Combustibles", SwingConstants.CENTER);
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
         add(titulo, BorderLayout.NORTH);
 

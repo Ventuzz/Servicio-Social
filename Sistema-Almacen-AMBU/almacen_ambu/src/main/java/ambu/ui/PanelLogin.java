@@ -71,23 +71,6 @@ public class PanelLogin extends RoundedPanel {
         passField = new CustomPasswordField(20);
         loginButton = new CustomButton("Iniciar Sesión"); 
 
-        JLabel registrarLabel = new JLabel("<html><U>Registrar nuevo usuario</U></html>");
-        registrarLabel.setForeground(Color.BLACK);
-        registrarLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        registrarLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        registrarLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                // Obtenemos la ventana principal para centrar el diálogo
-                Frame owner = (Frame) SwingUtilities.getWindowAncestor(PanelLogin.this);
-                
-                // Creamos y mostramos el diálogo de registro
-                RegistroDialog registroDialog = new RegistroDialog(owner, loginService);
-                registroDialog.setVisible(true);
-            }
-        });
-
-
 
         // --- Etiquetas 
         JLabel userLabel = new JLabel("Usuario:");
@@ -180,11 +163,5 @@ public class PanelLogin extends RoundedPanel {
         gbc.ipady = 10; 
         add(loginButton, gbc);
 
-        // Registrar Label
-        gbc.gridy = 5; // Ubícalo debajo del botón de login
-        gbc.ipady = 0; // Resetea el relleno vertical
-        gbc.insets = new Insets(20, 0, 0, 0); // Margen superior
-        gbc.anchor = GridBagConstraints.CENTER;
-        add(registrarLabel, gbc);
     }
 }

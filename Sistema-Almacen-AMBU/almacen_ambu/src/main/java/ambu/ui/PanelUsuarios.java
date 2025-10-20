@@ -1,7 +1,8 @@
 package ambu.ui;
 
 import ambu.models.Usuario;
-import ambu.ui.componentes.CustomButton; // <-- IMPORTANTE
+import ambu.ui.componentes.CustomButton; 
+import ambu.ui.dialog.RegistroDialog;
 import ambu.process.LoginService;
 
 import javax.swing.*;
@@ -9,6 +10,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.*;
 import java.util.List;
 
@@ -57,12 +60,14 @@ public class PanelUsuarios extends JPanel {
         
         //  --- USAMOS LOS BOTONES PERSONALIZADOS --- 
         CustomButton btnDesactivar = new CustomButton("Activar/Desactivar");
-        //CustomButton btnResetPass = new CustomButton("Restablecer Contraseña");
         CustomButton btnCambiarRol = new CustomButton("Cambiar Rol");
+        CustomButton btnAñadirUsuario = new CustomButton("Añadir Usuario");
+        CustomButton btnActualizar = new CustomButton("Refrescar Lista");
         
         panelBotones.add(btnDesactivar);
-        //panelBotones.add(btnResetPass);
         panelBotones.add(btnCambiarRol);
+        panelBotones.add(btnAñadirUsuario);
+        panelBotones.add(btnActualizar);
         add(panelBotones, BorderLayout.SOUTH);
 
         btnCambiarRol.addActionListener(e -> {
@@ -83,6 +88,23 @@ public class PanelUsuarios extends JPanel {
             }
         });
         
+        btnAñadirUsuario.addActionListener(e -> {
+            RegistroDialog dialogo = new RegistroDialog((Frame) SwingUtilities.getWindowAncestor(this), loginService);
+            dialogo.setVisible(true);
+        });
+
+        btnActualizar.addActionListener(e -> cargarUsuarios());
+        Action refreshAction = new AbstractAction("Refrescar") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                cargarUsuarios();
+            }
+        };
+        String refreshActionKey = "refrescarUsuarios";
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), refreshActionKey);
+        this.getActionMap().put(refreshActionKey, refreshAction); 
+
         // --- Lógica de los Botones ---
         btnDesactivar.addActionListener(e -> {
             int selectedRow = tablaUsuarios.getSelectedRow();

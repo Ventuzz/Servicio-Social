@@ -24,6 +24,7 @@ public class PanelHistorialAceites extends JPanel {
     private JButton btnExportar;
     private JButton btnRefrescar;
     private JButton btnDevolver;
+    private JTextField txtBuscar;
 
     private final FluidosService service = new FluidosService();
 
@@ -35,7 +36,7 @@ public class PanelHistorialAceites extends JPanel {
     private void buildUI(){
         setLayout(new BorderLayout(12,12));
         setBorder(new EmptyBorder(12,12,12,12));
-        JLabel t = new JLabel("Historial – Aceites y Anticongelantes");
+        JLabel t = new JLabel("Historial de Aceites y Anticongelantes", SwingConstants.CENTER);
         t.setFont(t.getFont().deriveFont(Font.BOLD, 18f));
         add(t, BorderLayout.NORTH);
 
@@ -46,6 +47,17 @@ public class PanelHistorialAceites extends JPanel {
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        javax.swing.JPanel barraBusqueda = new javax.swing.JPanel(new java.awt.BorderLayout(6,6));
+        txtBuscar = new javax.swing.JTextField();
+        txtBuscar.setPreferredSize(new java.awt.Dimension(200, 20));
+        barraBusqueda.add(new javax.swing.JLabel("Buscar:"), java.awt.BorderLayout.WEST);
+        barraBusqueda.add(txtBuscar, java.awt.BorderLayout.CENTER);
+        txtBuscar.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroAceites(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroAceites(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroAceites(); }
+        });
+        south.add(barraBusqueda);
         btnRefrescar = new JButton(new AbstractAction("Refrescar"){
             @Override public void actionPerformed(java.awt.event.ActionEvent e){ cargar(); }
         });
@@ -155,6 +167,29 @@ public class PanelHistorialAceites extends JPanel {
                 JOptionPane.showMessageDialog(this, "Error al exportar: "+ex.getMessage());
             }
         }
+    }
+
+    private void aplicarFiltroAceites() {
+        String q = (txtBuscar != null) ? txtBuscar.getText() : null;
+        javax.swing.table.TableRowSorter<?> sorterLocal =
+            (javax.swing.table.TableRowSorter<?>) table.getRowSorter();
+
+        if (q == null || q.trim().isEmpty()) { sorterLocal.setRowFilter(null); return; }
+
+        String[] tokens = q.trim().split("\\s+");
+        java.util.List<javax.swing.RowFilter<Object,Object>> ands = new java.util.ArrayList<>();
+        for (String t : tokens) {
+            String pat = "(?i)" + java.util.regex.Pattern.quote(t);
+            ands.add(regexEnTodasLasColumnas(table, pat));
+        }
+        sorterLocal.setRowFilter(javax.swing.RowFilter.andFilter(ands));
+    }
+
+    private javax.swing.RowFilter<Object,Object> regexEnTodasLasColumnas(javax.swing.JTable table, String regex) {
+        final int cols = table.getColumnCount();
+        final int[] idx = new int[cols];
+        for (int i = 0; i < cols; i++) idx[i] = i;
+        return javax.swing.RowFilter.regexFilter(regex, idx);
     }
 
     // ===== Modelos/DTO =====

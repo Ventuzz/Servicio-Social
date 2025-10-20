@@ -67,7 +67,7 @@ public class PanelAprobacionesAdmin extends JPanel {
         setLayout(new BorderLayout(8, 8));
         setBorder(new EmptyBorder(12, 12, 12, 12));
 
-        JLabel title = new JLabel("Aprobaciones de Tickets");
+        JLabel title = new JLabel("Aprobaciones – Tickets de Insumos", SwingConstants.CENTER);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
         add(title, BorderLayout.NORTH);
 
@@ -79,7 +79,7 @@ public class PanelAprobacionesAdmin extends JPanel {
         JPanel top = new JPanel(new BorderLayout(8, 8));
 
         JPanel header = new JPanel(new BorderLayout(8, 0));
-        header.add(new JLabel("Tickets"), BorderLayout.WEST);
+        header.add(new JLabel("Buscar:"), BorderLayout.WEST);
         txtBuscar = new JTextField();
         header.add(txtBuscar, BorderLayout.CENTER);
         top.add(header, BorderLayout.NORTH);

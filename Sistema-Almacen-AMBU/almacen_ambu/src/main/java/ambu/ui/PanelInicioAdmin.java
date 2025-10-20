@@ -54,13 +54,13 @@ public class PanelInicioAdmin extends JPanel {
         menuPestanas.setForeground(Color.WHITE);
         menuPestanas.setFont(new Font("Arial", Font.BOLD, 14));
         menuPestanas.setUI(new CustomTabbedPaneUI());
-        
-        menuPestanas.addTab("Registro Ticket", new JPanel() {{ setOpaque(false); }});
+
+        menuPestanas.addTab("Ticket Insumos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Ticket Combustible", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Ticket Fluidos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Usuarios", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Inventario", new JPanel() {{ setOpaque(false); }});
-        menuPestanas.addTab("Aprobaciones", new JPanel() {{ setOpaque(false); }});
+        menuPestanas.addTab("Aprobaciones Insumos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Gasolina", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Aprobaciones Fluidos", new JPanel() {{ setOpaque(false); }});
         menuPestanas.addTab("Historial Insumos", new JPanel() {{ setOpaque(false); }});
@@ -88,7 +88,7 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho.setOpaque(false);
 
         PanelTicketAdmin panelTicketAdmin = new PanelTicketAdmin(usuario.getId());
-        panelDerecho.add(panelTicketAdmin, "Registro Ticket");
+        panelDerecho.add(panelTicketAdmin, "Ticket Insumos");
         PanelSolicitudCombustibleAdmin panelTicketCombustibleAdmin = new PanelSolicitudCombustibleAdmin();
         panelDerecho.add(panelTicketCombustibleAdmin, "Ticket Combustible");
         PanelSolicitudFluidos panelTicketFluidosAdmin = new PanelSolicitudFluidos();
@@ -98,12 +98,12 @@ public class PanelInicioAdmin extends JPanel {
         PanelInventario panelInventario = new PanelInventario();
         panelDerecho.add(panelInventario, "Inventario");
         PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId(), true, new TicketsService());
-        panelDerecho.add(panelAprobaciones, "Aprobaciones");
+        panelDerecho.add(panelAprobaciones, "Aprobaciones Insumos");
         PanelAprobacionesGasolinaAdmin panelAprobacionesGasolina = new PanelAprobacionesGasolinaAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
         PanelAprobacionesFluidosAdmin panelAprobacionesFluidos = new PanelAprobacionesFluidosAdmin();
         panelDerecho.add(panelAprobacionesFluidos, "Aprobaciones Fluidos");
-        panelDerecho.add(new PanelHistorialInsumosAdministrador(), "Historial Insumos");
+        panelDerecho.add(new PanelHistorial(usuario, true), "Historial Insumos");
         panelDerecho.add(new PanelHistorialGasolina(), "Historial Gasolina");
         panelDerecho.add(new PanelHistorialAceites(), "Historial Fluidos");
 
@@ -112,12 +112,12 @@ public class PanelInicioAdmin extends JPanel {
             int indiceSeleccionado = menuPestanas.getSelectedIndex();
             String tituloPestana = menuPestanas.getTitleAt(indiceSeleccionado);
             switch (tituloPestana) {
-                case "Registro Ticket": cardLayout.show(panelDerecho, "Registro Ticket"); break;
+                case "Ticket Insumos": cardLayout.show(panelDerecho, "Ticket Insumos"); break;
                 case "Ticket Combustible": cardLayout.show(panelDerecho, "Ticket Combustible"); break;
                 case "Ticket Fluidos": cardLayout.show(panelDerecho, "Ticket Fluidos"); break;
                 case "Usuarios": cardLayout.show(panelDerecho, "Usuarios"); break;
                 case "Inventario": cardLayout.show(panelDerecho, "Inventario"); break;
-                case "Aprobaciones": cardLayout.show(panelDerecho, "Aprobaciones"); break;
+                case "Aprobaciones Insumos": cardLayout.show(panelDerecho, "Aprobaciones Insumos"); break;
                 case "Aprobaciones Gasolina": cardLayout.show(panelDerecho, "Aprobaciones Gasolina"); break;
                 case "Aprobaciones Fluidos": cardLayout.show(panelDerecho, "Aprobaciones Fluidos"); break;
                 case "Historial Insumos": cardLayout.show(panelDerecho, "Historial Insumos"); break;

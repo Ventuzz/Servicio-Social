@@ -22,6 +22,7 @@ public class PanelHistorialGasolina extends JPanel {
     private JTable tblHistorial;
     private HistorialGasolinaModel model;
     private TableRowSorter<HistorialGasolinaModel> sorter;
+    private JTextField txtBuscar;
 
     private final TicketsService service = new TicketsService();
     private JButton btnDevolver;
@@ -40,7 +41,7 @@ public class PanelHistorialGasolina extends JPanel {
         setBorder(new EmptyBorder(12, 12, 12, 12));
         setOpaque(false);
 
-        JLabel titulo = new JLabel("Historial de Gasolina (Aprobaciones)");
+        JLabel titulo = new JLabel("Historial de solicitudes de Combustibles", SwingConstants.CENTER);
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 18f));
         add(titulo, BorderLayout.NORTH);
 
@@ -52,6 +53,18 @@ public class PanelHistorialGasolina extends JPanel {
         sorter = new TableRowSorter<>(model);
         tblHistorial.setRowSorter(sorter);
 
+        javax.swing.JPanel barraBusqueda = new javax.swing.JPanel(new java.awt.BorderLayout(12,12));
+        txtBuscar = new javax.swing.JTextField();
+        txtBuscar.setPreferredSize(new java.awt.Dimension(200, 20));
+        barraBusqueda.add(new javax.swing.JLabel("Buscar:"), java.awt.BorderLayout.WEST);
+        barraBusqueda.add(txtBuscar, java.awt.BorderLayout.CENTER);
+
+        txtBuscar.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroHistGas(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroHistGas(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroHistGas(); }
+        });
+        
         // Anchos sugeridos
         SwingUtilities.invokeLater(() -> {
             if (tblHistorial.getColumnModel().getColumnCount() >= 9) {
@@ -80,23 +93,23 @@ public class PanelHistorialGasolina extends JPanel {
         };
         btnRefrescar = new JButton(refreshAction);
 
-
+        bottomBar.add(barraBusqueda);
         bottomBar.add(btnDevolver);
         bottomBar.add(btnRefrescar);
 
         final Action exportAction = new AbstractAction("Exportar Excel") {
-    @Override public void actionPerformed(ActionEvent e) { onExportar(); }
-};
+            @Override public void actionPerformed(ActionEvent e) { onExportar(); }
+        };
 
-btnExportar = new JButton(exportAction);
-// Mantén el estilo visual que usas para botones
-bottomBar.add(btnExportar);
+        btnExportar = new JButton(exportAction);
+        // Mantén el estilo visual que usas para botones
+        bottomBar.add(btnExportar);
 
-// Atajo Ctrl/Cmd+E
-int menuMask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // Cmd en mac, Ctrl en win/linux
-getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-    .put(KeyStroke.getKeyStroke(KeyEvent.VK_E, menuMask), "hist_export");
-getActionMap().put("hist_export", exportAction);
+        // Atajo Ctrl/Cmd+E
+        int menuMask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // Cmd en mac, Ctrl en win/linux
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke(KeyEvent.VK_E, menuMask), "hist_export");
+        getActionMap().put("hist_export", exportAction);
 
         add(new JScrollPane(tblHistorial), BorderLayout.CENTER);
         add(bottomBar, BorderLayout.SOUTH);
@@ -149,7 +162,7 @@ getActionMap().put("hist_export", exportAction);
         "FROM control_combustible c " +
         "LEFT JOIN usuarios   u ON u.usuario_id = c.id_usuario_solicitante " +
         "LEFT JOIN existencias e ON e.id = c.id_existencia " +
-        "ORDER BY c.fecha DESC";  // 👈 sin WHERE
+        "ORDER BY c.fecha DESC";  
 
     final String SQL_NO_DEV =
         "SELECT " +
@@ -167,7 +180,7 @@ getActionMap().put("hist_export", exportAction);
         "FROM control_combustible c " +
         "LEFT JOIN usuarios   u ON u.usuario_id = c.id_usuario_solicitante " +
         "LEFT JOIN existencias e ON e.id = c.id_existencia " +
-        "ORDER BY c.fecha DESC";  // 👈 sin WHERE
+        "ORDER BY c.fecha DESC";
 
     List<HistorialGasolinaRow> out = new ArrayList<>();
     try (Connection cn = DatabaseConnection.getConnection()) {
@@ -370,5 +383,121 @@ getActionMap().put("hist_export", exportAction);
         }
 
         @Override public boolean isCellEditable(int r, int c) { return false; }
+    }
+
+    private void aplicarFiltroHistGas() {
+    javax.swing.table.TableRowSorter<?> sorterLocal =
+        (javax.swing.table.TableRowSorter<?>) tblHistorial.getRowSorter();
+    if (sorterLocal == null) return;
+
+    String q = (txtBuscar != null) ? txtBuscar.getText() : null;
+    if (q == null || q.trim().isEmpty()) {
+        sorterLocal.setRowFilter(null);
+        return;
+    }
+
+    final String[] tokens = q.trim().split("\\s+");
+    sorterLocal.setRowFilter(new javax.swing.RowFilter<Object,Object>() {
+        @Override
+        public boolean include(Entry<?, ?> entry) {
+            // AND entre tokens: cada token debe aparecer en alguna columna
+            for (String raw : tokens) {
+                final String token = raw.toLowerCase();
+                final boolean exact = token.startsWith("#");
+                final String t = exact ? token.substring(1) : token;
+
+                boolean foundThisToken = false;
+                for (int c = 0; c < entry.getValueCount(); c++) {
+                    Object v = entry.getValue(c);
+                    if (matchesToken(v, t, exact)) {
+                        foundThisToken = true;
+                        break;
+                    }
+                }
+                if (!foundThisToken) return false;
+            }
+            return true;
+        }
+    });
+}
+
+    // === Helpers ===
+    private boolean matchesToken(Object value, String token, boolean exact) {
+        if (value == null || token.isEmpty()) return false;
+
+        // Números / IDs
+        if (value instanceof Number) {
+            String n = normalizeNumber((Number) value);
+            return exact ? n.equalsIgnoreCase(token) : n.toLowerCase().contains(token);
+        }
+
+        // Fechas java.util / java.sql
+        if (value instanceof java.util.Date) {
+            for (String s : formatDateVariants((java.util.Date) value)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+
+        // java.time.LocalDate / LocalDateTime / OffsetDateTime (Java 11)
+        if (value instanceof java.time.LocalDate) {
+            for (String s : formatDateVariants((java.time.LocalDate) value)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+        if (value instanceof java.time.LocalDateTime) {
+            java.time.LocalDate d = ((java.time.LocalDateTime) value).toLocalDate();
+            for (String s : formatDateVariants(d)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+        if (value instanceof java.time.OffsetDateTime) {
+            java.time.LocalDate d = ((java.time.OffsetDateTime) value).toLocalDate();
+            for (String s : formatDateVariants(d)) {
+                if (exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token)) return true;
+            }
+            return false;
+        }
+
+        // Texto genérico
+        String s = String.valueOf(value);
+        return exact ? s.equalsIgnoreCase(token) : s.toLowerCase().contains(token);
+    }
+
+    private String normalizeNumber(Number n) {
+        // Evita exponentes y ceros de más; funciona con Integer, Long, BigDecimal, etc.
+        java.math.BigDecimal bd = new java.math.BigDecimal(n.toString());
+        return bd.stripTrailingZeros().toPlainString();
+    }
+
+    private java.util.List<String> formatDateVariants(java.util.Date d) {
+        java.util.List<String> out = new java.util.ArrayList<>(3);
+        java.text.SimpleDateFormat f1 = new java.text.SimpleDateFormat("dd/MM/yyyy");
+        java.text.SimpleDateFormat f2 = new java.text.SimpleDateFormat("yyyy-MM-dd");
+        java.text.SimpleDateFormat f3 = new java.text.SimpleDateFormat("dd-MM-yyyy");
+        out.add(f1.format(d));
+        out.add(f2.format(d));
+        out.add(f3.format(d));
+        return out;
+    }
+
+    private java.util.List<String> formatDateVariants(java.time.LocalDate d) {
+        java.util.List<String> out = new java.util.ArrayList<>(3);
+        java.time.format.DateTimeFormatter f1 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        java.time.format.DateTimeFormatter f2 = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE; // yyyy-MM-dd
+        java.time.format.DateTimeFormatter f3 = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        out.add(d.format(f1));
+        out.add(d.format(f2));
+        out.add(d.format(f3));
+        return out;
+    }
+
+    private javax.swing.RowFilter<Object,Object> regexEnTodasLasColumnas(javax.swing.JTable table, String regex) {
+        final int cols = table.getColumnCount();
+        final int[] idx = new int[cols];
+        for (int i = 0; i < cols; i++) idx[i] = i;
+        return javax.swing.RowFilter.regexFilter(regex, idx);
     }
 }

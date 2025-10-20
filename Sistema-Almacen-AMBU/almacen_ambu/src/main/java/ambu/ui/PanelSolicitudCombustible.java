@@ -58,7 +58,6 @@ public class PanelSolicitudCombustible extends JPanel {
 
     private void initUI() {
         setLayout(new BorderLayout(15, 15));
-        setOpaque(false);
         setBorder(new EmptyBorder(20, 30, 20, 30));
 
         // --- Panel Superior: Tabla de Inventario de Combustibles (AHORA ES INTERACTIVA) ---

@@ -99,7 +99,7 @@ public class PanelSolicitudFluidosUsuario extends JPanel {
         gbc.gridx=0; gbc.gridy=row; gbc.weightx=0; form.add(l4, gbc);
         gbc.gridx=1; gbc.gridy=row++; gbc.weightx=1; form.add(cbUnidad, gbc);
 
-        JButton btnGuardar = new CustomButton("Guardar solicitud");
+        JButton btnGuardar = new CustomButton("Enviar Solicitud");
         btnGuardar.addActionListener(this::onGuardar);
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
