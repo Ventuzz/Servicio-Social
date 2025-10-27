@@ -78,7 +78,7 @@ public class DevolucionParcialDialog extends JDialog {
         GridBagConstraints gc = new GridBagConstraints();
         gc.insets = new Insets(6, 6, 6, 6);
         gc.gridx = 0; gc.gridy = 0; gc.anchor = GridBagConstraints.WEST;
-        center.add(new JLabel("Cantidad a devolver (puede ser parcial):"), gc);
+        center.add(new JLabel("Cantidad a devolver:"), gc);
 
         gc.gridx = 1; gc.weightx = 1.0; gc.fill = GridBagConstraints.HORIZONTAL;
 
@@ -87,7 +87,6 @@ public class DevolucionParcialDialog extends JDialog {
         nf.setMaximumFractionDigits(3); // líquidos con 3 decimales
         txtCantidad = new JFormattedTextField(nf);
         txtCantidad.setColumns(10);
-        txtCantidad.setValue(pendiente); // sugerimos devolver todo
         // Limitar a 3 decimales con DocumentFilter
         ((AbstractDocument) txtCantidad.getDocument()).setDocumentFilter(new MaxDecimalsFilter(3));
         center.add(txtCantidad, gc);
@@ -131,7 +130,7 @@ public class DevolucionParcialDialog extends JDialog {
 
     private void onDevolverParcial(ActionEvent e) {
         BigDecimal cant = readCantidad();
-        if (cant == null) return; // ya se mostró el error
+        if (cant == null) return; 
         devolver(cant);
     }
 
@@ -228,11 +227,11 @@ public class DevolucionParcialDialog extends JDialog {
 
     private void showError(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+        txtCantidad.setValue(null); 
+        txtCantidad.requestFocusInWindow();
     }
 
-    /**
-     * Limita el input a N decimales (permite "." o "," como separador).
-     */
+
     private static class MaxDecimalsFilter extends DocumentFilter {
         private final int maxDecimals;
         MaxDecimalsFilter(int maxDecimals) { this.maxDecimals = maxDecimals; }
