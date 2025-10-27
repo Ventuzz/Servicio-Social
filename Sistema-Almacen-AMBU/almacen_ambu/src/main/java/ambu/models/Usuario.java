@@ -1,5 +1,8 @@
 package ambu.models;
 
+/*------------------------
+    Atributos de usuario
+ -----------------------*/
 public class Usuario {
     private long id;
     private String username;

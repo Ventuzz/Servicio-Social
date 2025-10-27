@@ -7,7 +7,9 @@ import java.util.*;
 import java.util.Date;
 import java.math.BigDecimal;
 
-
+/*-----------------------------------------------
+        Gestor de tickets y solicitudes
+ -----------------------------------------------*/
 public class TicketsService {
 
     // =======================
@@ -213,7 +215,9 @@ public class TicketsService {
         }
     }
 
-    // crearSolicitud para usuario externo (sin registro) OMITIDO
+/*-----------------------------------------------
+        Crear solicitud (solicitante externo)
+ -----------------------------------------------*/
 
     public int crearSolicitudExterna(String nombreSolicitante, Long idJefe, List<ItemSolicitado> items) throws SQLException {
     if (nombreSolicitante == null || nombreSolicitante.trim().isEmpty())
@@ -369,12 +373,6 @@ public class TicketsService {
     // Aprobación y rechazo
     // =======================
 
-    /**
-     * Aprueba una solicitud:
-     *  1) Actualiza cantidad_aprobada en el detalle (por id_detalle).
-     *  2) Inserta en prestamos con INSERT…SELECT (NO inserta en detalle).  ← CORRECCIÓN CLAVE
-     *  3) Marca cabecera como APROBADA y guarda aprobada_en + (si aplica) jefe aprobador.
-     */
     public void aprobarSolicitud(int idSolicitud, Map<Integer, BigDecimal> aprobadasPorIdDetalle, long idAprobador) throws SQLException {
         if (aprobadasPorIdDetalle == null || aprobadasPorIdDetalle.isEmpty())
             throw new IllegalArgumentException("No se han indicado cantidades aprobadas.");
@@ -425,7 +423,7 @@ public class TicketsService {
         cn = DatabaseConnection.getConnection();
         cn.setAutoCommit(false);
 
-        // 0) Leer estado + datos necesarios y BLOQUEAR la fila del ticket
+        // Leer estado + datos necesarios y BLOQUEAR la fila del ticket
         String estadoActual = null;
         Integer idExistencia = null;
         java.math.BigDecimal cantidad = null;
@@ -454,10 +452,8 @@ public class TicketsService {
         // 1) Reglas de negocio
         if (!"PENDIENTE".equals(estado)) {
             if (aprobar) {
-                // Ya movido no se puede volver a aprobar
                 throw new SQLException("El ticket ya no puede aprobarse (estado actual: " + estado + ").");
             } else {
-                // Si ya está EN_PRESTAMO no puede rechazarse
                 if ("EN_PRESTAMO".equals(estado)) {
                     throw new SQLException("Un ticket EN_PRESTAMO no puede rechazarse.");
                 } else {
@@ -470,13 +466,12 @@ public class TicketsService {
         // 2) Si se aprueba desde PENDIENTE: descuenta inventario y pasa a EN_PRESTAMO
         if (aprobar) {
             if (idExistencia != null && cantidad != null && cantidad.signum() > 0) {
-                // Valida insuficiencia y hace UPDATE atómico del stock
                 descontarStockExistencia(cn, idExistencia.intValue(), cantidad);
             }
 
             ps = cn.prepareStatement(
                 "UPDATE control_combustible " +
-                "SET estado = 'EN_PRESTAMO' " + // <-- aquí el cambio de APROBADA a EN_PRESTAMO
+                "SET estado = 'EN_PRESTAMO' " + 
                 "WHERE id_control_combustible = ? AND estado = 'PENDIENTE'"
             );
             ps.setInt(1, id);
@@ -603,7 +598,7 @@ public class TicketsService {
         ps.close(); ps = null;
         if (upd != 1) throw new SQLException("No se pudo registrar la devolución (el estado cambió).");
 
-        // 4) Cerrar si saldó
+        // 4) Cerrar si ya no queda pendiente
         java.math.BigDecimal nuevoPendiente = pendiente.subtract(cantidadDevuelta);
         if (nuevoPendiente.signum() == 0) {
             // Si tienes fecha_cierre/cerrado_por, puedes agregarlos aquí.
@@ -767,10 +762,9 @@ private static VehInfo parseVehiculoPlacasKm(String obsOriginal){
     }
 }
 
-/**
- * Detecta la columna de stock real en 'existencias' usando INFORMATION_SCHEMA.
- * Prioridad: cantidad_fisica, cantidad, stock, existencia.
- */
+/*-----------------------------------------------
+        Helper: detectar columna de stock en existencias
+ -----------------------------------------------*/
 private String detectarColumnaStockExistencias(Connection cn) throws SQLException {
     final String[] candidatos = new String[] { "cantidad_fisica", "cantidad", "stock", "existencia" };
 
@@ -798,7 +792,9 @@ private String detectarColumnaStockExistencias(Connection cn) throws SQLExceptio
     return null;
 }
 
-// ======= Método NUEVO: aprobar + entregar + registrar combustible =======
+/*-----------------------------------------------
+        Aprobación y entrega inmediata por ticket
+ -----------------------------------------------*/
 public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws SQLException {
     Connection cn = null;
     PreparedStatement ps = null;
@@ -1005,18 +1001,16 @@ public boolean aprobarPorTicketConEntrega(int idSolicitud, long adminId) throws 
         if ("APROBADA".equalsIgnoreCase(estado) ||
             "EN_PRESTAMO".equalsIgnoreCase(estado) ||
             "ENTREGADA".equalsIgnoreCase(estado)) {
-            // Insertar préstamo ENTREGADO para el nuevo renglón
             try (PreparedStatement pi = cn.prepareStatement(
                 "INSERT INTO prestamos (id_solicitud, id_detalle, id_existencia, cantidad, estado, fecha_aprobacion, fecha_entrega) " +
                 "VALUES (?,?,?,?, 'ENTREGADO', NOW(), NOW())")) {
                 pi.setInt(1, idSolicitud);
                 pi.setInt(2, nuevoId);
                 pi.setInt(3, idExistencia);
-                pi.setBigDecimal(4, cantidad); // o calcula según tu lógica de aprobado
+                pi.setBigDecimal(4, cantidad); 
                 pi.executeUpdate();
             }
 
-            // Asegurar marcas de entrega si aún no estaban
             try (PreparedStatement up = cn.prepareStatement(
                 "UPDATE solicitudes_insumos " +
                 "SET estado='EN_PRESTAMO', entregada_en=COALESCE(entregada_en, CURRENT_TIMESTAMP) " +
@@ -1046,10 +1040,9 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
         cn = DatabaseConnection.getConnection();
         cn.setAutoCommit(false);
 
-        // Aprueba y (ahora) entrega en el mismo paso:
         ps = cn.prepareStatement(
             "UPDATE solicitudes_insumos " +
-            "SET estado='EN_PRESTAMO', " + // pasa a EN_PRESTAMO porque ya se entrega
+            "SET estado='EN_PRESTAMO', " + 
             "    aprobada_en=COALESCE(aprobada_en, CURRENT_TIMESTAMP), " +
             "    entregada_en=CURRENT_TIMESTAMP, " +
             "    id_usuario_jefe_inmediato=?, " +
@@ -1057,7 +1050,7 @@ public boolean aprobarPorTicket(int idSolicitud, long adminId) throws SQLExcepti
             "WHERE id_solicitud=? AND (estado='PENDIENTE' OR estado='APROBADA' OR estado IS NULL)"
         );
         ps.setLong(1, adminId);
-        ps.setLong(2, adminId); // quien aprueba también entrega (ajusta si usas otro usuario)
+        ps.setLong(2, adminId); 
         ps.setInt(3, idSolicitud);
         int upd = ps.executeUpdate();
         ps.close();
@@ -1098,6 +1091,9 @@ public List<CombustibleItem> listarCombustibles() throws SQLException {
     }
 }
 
+/*-----------------------------------------------
+        Crear solicitud de combustible
+ -----------------------------------------------*/
 
 public boolean crearSolicitudCombustible(long idSolicitante, Date fecha, String vehiculo, String placas, int kilometraje, int idCombustible, BigDecimal cantidad, String unidad) throws SQLException {
     String sql = "INSERT INTO control_combustible " +
@@ -1191,6 +1187,9 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
     }
 }
 
+/*-----------------------------------------------
+        Devolver préstamo parcial
+ -----------------------------------------------*/
     public void devolverPrestamo(int idPrestamo) throws SQLException {
         String sql = "UPDATE prestamos SET estado='DEVUELTO' WHERE id_prestamo=? AND estado='ENTREGADO'";
         try (Connection cn = DatabaseConnection.getConnection();
@@ -1217,16 +1216,15 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
                     cn.rollback();
-                    return false; // El préstamo no existe
+                    return false; 
                 }
                 cantidadTotalPrestada = rs.getBigDecimal(1);
-                // Si la cantidad devuelta es NULL en la BD, la tratamos como 0
                 cantidadYaDevuelta = rs.getBigDecimal(2) == null ? BigDecimal.ZERO : rs.getBigDecimal(2);
                 estadoActual = rs.getString(3);
             }
         }
 
-        // 2. Validaciones (sin cambios)
+        // 2. Validaciones 
         if (!"ENTREGADO".equalsIgnoreCase(estadoActual)) {
             cn.rollback();
             throw new SQLException("Solo se pueden devolver préstamos en estado ENTREGADO.");
@@ -1242,7 +1240,6 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
             throw new SQLException("No puedes devolver más de lo pendiente (" + pendiente + ").");
         }
 
-        // --- 3. CALCULAR NUEVOS VALORES EN JAVA (Lógica corregida) ---
         BigDecimal nuevaCantidadDevuelta = cantidadYaDevuelta.add(cantDev);
         
         // Comparamos si la nueva cantidad devuelta es igual o mayor a la total prestada
@@ -1251,11 +1248,10 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
         // Determinamos el nuevo estado del préstamo
         String nuevoEstado = esDevolucionCompleta ? "DEVUELTO" : "ENTREGADO";
 
-        // --- 4. EJECUTAR UN UPDATE SIMPLE Y DIRECTO ---
         String sqlUpdate = "UPDATE prestamos SET " +
                            "  cantidad_devuelta = ?, " +
                            "  estado = ?, " +
-                           "  fecha_devolucion = NOW(), " + // Siempre actualizamos la fecha de la última devolución
+                           "  fecha_devolucion = NOW(), " + 
                            "  id_usuario_receptor_dev = ? " +
                            "WHERE id_prestamo = ?";
                            
@@ -1270,7 +1266,6 @@ public boolean cerrarTicket(int idSolicitud, long adminId) throws SQLException {
         cn.commit();
         return true;
     } catch (SQLException e) {
-        // En caso de error, siempre hacer rollback
         try (Connection cn = DatabaseConnection.getConnection()) {
             if (cn != null && !cn.getAutoCommit()) {
                 cn.rollback();

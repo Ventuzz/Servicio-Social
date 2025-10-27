@@ -13,6 +13,9 @@ import java.awt.event.ActionEvent;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/*-----------------------------------------------
+    Panel de solicitud de fluidos para un ticket
+ -----------------------------------------------*/
 
 public class PanelSolicitudFluidosUsuario extends JPanel {
 
@@ -44,7 +47,9 @@ public class PanelSolicitudFluidosUsuario extends JPanel {
         buildUI();
         cargarStockAsync();
     }
-
+/*---------------------------
+    Ensamble de la ventana
+ ---------------------------*/
     private void buildUI() {
         setLayout(new BorderLayout(12, 12));
         setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -67,6 +72,15 @@ public class PanelSolicitudFluidosUsuario extends JPanel {
 
         JButton btnRefrescar = new CustomButton("Refrescar");
         btnRefrescar.addActionListener(e -> cargarStockAsync());
+        // Asignar atajo de teclado F5
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke("F5"), "refreshF5");
+        getActionMap().put("refreshF5", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                refreshF5();
+            }
+        });
+
         JPanel northRight = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         northRight.setOpaque(false);
         northRight.add(btnRefrescar);
@@ -136,6 +150,16 @@ public class PanelSolicitudFluidosUsuario extends JPanel {
             }}
         }.execute();
     }
+
+    private void refreshF5() {
+    try {
+
+        cargarStockAsync(); 
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this, "Error al refrescar: " + ex.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
 
     private void onGuardar(ActionEvent e) {
         int viewRow = tblStock.getSelectedRow();

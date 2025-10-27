@@ -1,12 +1,21 @@
 package ambu.ui.componentes;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.geom.RoundRectangle2D;
 
+import javax.swing.JTextField;
+import javax.swing.border.EmptyBorder;
+
+/*-------------------------------------------
+    Campo para personalizar cuerpos de texto
+ --------------------------------------------*/
 public class CustomTextField extends JTextField {
 
     private Color borderColor = new Color(70, 70, 70); // Borde normal
@@ -21,7 +30,7 @@ public class CustomTextField extends JTextField {
         setForeground(Color.WHITE); // Texto blanco
         setCaretColor(Color.WHITE); // Cursor blanco
         setBorder(new EmptyBorder(5, 10, 5, 10)); // Espaciado interno para el texto
-        setFont(new Font("Arial", Font.PLAIN, 14)); // Fuente moderna
+        setFont(new Font("Arial", Font.PLAIN, 14)); 
 
         addFocusListener(new FocusAdapter() {
             @Override
@@ -62,6 +71,6 @@ public class CustomTextField extends JTextField {
         }
 
         g2.dispose();
-        super.paintComponent(g); // Asegura que el texto se dibuje encima
+        super.paintComponent(g); 
     }
 }

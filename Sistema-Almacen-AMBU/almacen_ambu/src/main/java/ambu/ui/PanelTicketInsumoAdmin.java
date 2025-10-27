@@ -1,9 +1,3 @@
-// ================================================
-// PanelTicketsAdminNombre.java
-// Admin puede generar solicitudes a nombre de otra persona
-// Basado en PanelTicketsUsuario: mismo flujo de disponibles → carrito → enviar
-// Diferencia: el solicitante es un campo de texto (puede ser nombre libre o un ID numérico existente)
-// ================================================
 package ambu.ui;
 
 import ambu.mysql.DatabaseConnection;
@@ -29,7 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class PanelTicketAdmin extends JPanel {
+/*-----------------------------------------------
+    Panel para solicitar un ticket de un insumo desde el panel de administrador
+ -----------------------------------------------*/
+public class PanelTicketInsumoAdmin extends JPanel {
     private final TicketsService service = new TicketsService();
     private Long idJefe= null; // puede ser null
 
@@ -46,12 +43,14 @@ public class PanelTicketAdmin extends JPanel {
     private JTextField campoBusqueda;
     private TableRowSorter<DisponiblesTableModel> sorter;
 
-    public PanelTicketAdmin(Long idJefe) {
+    public PanelTicketInsumoAdmin(Long idJefe) {
         this.idJefe = idJefe;
         initUI();
         cargarDisponiblesAsync();
     }
-
+/*-----------------------------------------------
+    Ensamble de la ventana
+ -----------------------------------------------*/
     private void initUI() {
         setLayout(new BorderLayout(8,8));
         setBorder(new EmptyBorder(12,12,12,12));
@@ -264,7 +263,7 @@ new SwingWorker<Integer, Void>() {
             protected void done() {
                 try {
                     Integer idSolicitud = get();
-                    JOptionPane.showMessageDialog(PanelTicketAdmin.this,
+                    JOptionPane.showMessageDialog(PanelTicketInsumoAdmin.this,
                             "Solicitud enviada. Folio: " + idSolicitud,
                             "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     carritoModel.clear();

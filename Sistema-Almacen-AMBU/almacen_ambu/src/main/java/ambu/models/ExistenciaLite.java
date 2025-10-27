@@ -1,5 +1,8 @@
 package ambu.models;
 
+/*-----------------------------------------------
+    Atributos básicos de una existencia
+ -----------------------------------------------*/
 public class ExistenciaLite {
     private Integer id;
     private String marca;

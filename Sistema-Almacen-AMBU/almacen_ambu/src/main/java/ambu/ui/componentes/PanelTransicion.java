@@ -4,6 +4,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.GeneralPath;
 
+/*----------------------------------
+    Panel de transición con animación
+ -----------------------------------*/
 public class PanelTransicion extends JDialog {
 
     private float alpha = 0.0f;
@@ -39,7 +42,7 @@ public class PanelTransicion extends JDialog {
                 // Color de la hoja con el glow alpha
                 g2.setColor(new Color(20, 255, 120, (int) (alpha * 255)));
 
-                // Forma de la hoja (usando GeneralPath para curvas suaves)
+                // Forma de la hoja 
                 GeneralPath leafShape = new GeneralPath();
                 leafShape.moveTo(centerX, centerY - leafHeight / 2); // Punta superior
                 leafShape.curveTo(centerX + leafWidth / 2, centerY - leafHeight / 4,

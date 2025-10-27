@@ -14,7 +14,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-
+/*-----------------------------------------------
+    Panel para el historial de gasolina de un usuario
+ -----------------------------------------------*/
 public class PanelHistorialGasolinaUsuario extends JPanel {
 
     private final Long usuarioId;
@@ -33,6 +35,9 @@ public class PanelHistorialGasolinaUsuario extends JPanel {
         cargar();
     }
 
+/*-----------------------------------------------
+    Ensamble de la ventana de historial de gasolina para usuarios
+ -----------------------------------------------*/
     private void buildUI() {
         setLayout(new BorderLayout(12, 12));
         setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -101,7 +106,9 @@ public class PanelHistorialGasolinaUsuario extends JPanel {
             }
         }
     }
-
+/*-----------------------------------------------
+    Exportar a excel
+ -----------------------------------------------*/
     private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Guardar historial (CSV)");

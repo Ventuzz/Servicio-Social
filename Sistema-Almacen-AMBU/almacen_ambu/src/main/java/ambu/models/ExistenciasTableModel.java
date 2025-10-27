@@ -6,6 +6,9 @@ import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
 
+/*-------------------------------------
+    Vista de tabla para existencias
+ ------------------------------------*/
 public class ExistenciasTableModel extends AbstractTableModel {
     private final String[] cols = {"ID", "Marca", "Artículo", "Uso", "Ubicación"};
     private final List<ExistenciaLite> data = new ArrayList<ExistenciaLite>();

@@ -14,7 +14,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.*;
 import java.util.List;
-
+/*-----------------------------------------------
+    Panel de gestion de los usuarios registrados en el sistema
+ -----------------------------------------------*/
 public class PanelUsuarios extends JPanel {
 
     private JTable tablaUsuarios;
@@ -127,7 +129,6 @@ public class PanelUsuarios extends JPanel {
     }
     
     private void cargarUsuarios() {
-        // (Aquí deberías usar SwingWorker con PanelTransicion para una mejor experiencia)
         List<Usuario> usuarios = loginService.obtenerTodosLosUsuarios(adminActual.getId());
         
         tableModel.setRowCount(0); 
@@ -144,7 +145,7 @@ public class PanelUsuarios extends JPanel {
         }
     }
 
-    // --- MÉTODO DE ESTILO COPIADO DE PANELLOGS --- 
+    // --- Estilo de la tabla --- 
     private void estilizarTabla() {
         tablaUsuarios.setOpaque(false);
         tablaUsuarios.setFillsViewportHeight(true);

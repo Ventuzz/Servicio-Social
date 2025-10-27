@@ -17,12 +17,14 @@ import java.util.regex.Pattern;
 
 import javax.swing.table.TableRowSorter;
 
-
-public class PanelTicketsUsuario extends JPanel {
+/*-----------------------------------------------
+    Panel para la solicitud de un insumo desde la vista de usuario
+ -----------------------------------------------*/
+public class PanelTicketInsumoUsuario extends JPanel {
 
     private final TicketsService service = new TicketsService();
     private final long idSolicitante;
-    private final Long idJefe; // puede ser null
+    private final Long idJefe; 
     
     private JTable tblDisponibles;
     private JTable tblCarrito;
@@ -34,13 +36,15 @@ public class PanelTicketsUsuario extends JPanel {
     private JTextField campoBusqueda;
     private TableRowSorter<DisponiblesTableModel> sorter;
 
-    public PanelTicketsUsuario(long idSolicitante, Long idJefe) {
+    public PanelTicketInsumoUsuario(long idSolicitante, Long idJefe) {
         this.idSolicitante = idSolicitante;
         this.idJefe = idJefe;
         initUI();
         cargarDisponiblesAsync();
     }
-
+/*-----------------------------------------------
+    Ensamble de la ventana
+ -----------------------------------------------*/
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -59,7 +63,7 @@ public class PanelTicketsUsuario extends JPanel {
         tblDisponibles = new JTable(disponiblesModel);
         sorter = new TableRowSorter<>(disponiblesModel);
         tblDisponibles.setRowSorter(sorter);
-        tblDisponibles.getTableHeader().setReorderingAllowed(false); // evita que cambien las posiciones de columnas
+        tblDisponibles.getTableHeader().setReorderingAllowed(false);
 
         
         JPanel panelSuperiorNorte = new JPanel(new BorderLayout());
@@ -215,7 +219,7 @@ public class PanelTicketsUsuario extends JPanel {
             @Override protected void done() {
                 try {
                     Integer idSolicitud = get();
-                    JOptionPane.showMessageDialog(PanelTicketsUsuario.this,
+                    JOptionPane.showMessageDialog(PanelTicketInsumoUsuario.this,
                             "Solicitud enviada. Folio: " + idSolicitud,
                             "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     carritoModel.clear();

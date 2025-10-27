@@ -1,5 +1,3 @@
-// Main.java
-
 package ambu;
 
 import ambu.models.Usuario;
@@ -14,6 +12,9 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 
+/*-----------------------------------------------------------------------------------------------------------------------
+    Clase main desde la que se corre el programa, inicializa todos los procesos necesarios para que funcione la aplicación
+ -------------------------------------------------------------------------------------------------------------------*/
 public class Main extends JFrame {
 
     private Usuario usuarioActual;

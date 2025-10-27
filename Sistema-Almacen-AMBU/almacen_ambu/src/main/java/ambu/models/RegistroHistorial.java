@@ -2,6 +2,9 @@ package ambu.models;
 
 import java.sql.Timestamp;
 
+/*-----------------------------------------------
+Registros de solicitudes y préstamos en historial
+ -----------------------------------------------*/
 public class RegistroHistorial {
     private int id; // ID del registro (id_solicitud o id_prestamo/detalle)
     private String tipo; // "Solicitud" o "Préstamo"

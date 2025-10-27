@@ -9,6 +9,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/*-----------------------------------------------
+    Diálogo de registro de nuevo usuario
+ -----------------------------------------------*/
 public class RegistroDialog extends JDialog {
 
     private CustomTextField nombreField;
@@ -23,7 +26,7 @@ public class RegistroDialog extends JDialog {
         
         // Estilo del diálogo
         setUndecorated(true);
-        setBackground(new Color(0, 0, 0, 0)); // Transparente para que se vea el panel redondeado
+        setBackground(new Color(0, 0, 0, 0)); 
         setSize(450, 400);
         setLocationRelativeTo(owner);
         

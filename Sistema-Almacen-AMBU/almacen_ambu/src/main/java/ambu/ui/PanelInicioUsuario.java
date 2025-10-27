@@ -1,11 +1,35 @@
 package ambu.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+
 import ambu.models.Usuario;
 import ambu.ui.componentes.CustomTabbedPaneUI;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
 
+/*-----------------------------------------------
+    Panel de inicio de sesión de un usuario
+ -----------------------------------------------*/
 public class PanelInicioUsuario extends JPanel {
 
     private final Usuario usuarioActual;
@@ -33,7 +57,7 @@ public class PanelInicioUsuario extends JPanel {
         setBorder(new EmptyBorder(30, 40, 30, 40));
 
         buildHeader();
-        buildSplitLayout(onLogout); // Pasamos la acción al método que construye la UI
+        buildSplitLayout(onLogout);
     }
     
     // Encabezado con título y saludo
@@ -54,7 +78,6 @@ public class PanelInicioUsuario extends JPanel {
         add(north, BorderLayout.NORTH);
     }
 
-    // Modificamos buildSplitLayout para que reciba y use la acción de logout
     private void buildSplitLayout(Runnable onLogout) {
         menuPestanas = new JTabbedPane(JTabbedPane.LEFT);
         // Configuración del tabbed pane
@@ -93,10 +116,10 @@ public class PanelInicioUsuario extends JPanel {
         contentPanel.setMinimumSize(new Dimension(0, 0));
 
         split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelIzquierdo, contentPanel);
-        // Habilita arrastre fluido y libertad total del divisor
+        // Habilita arrastre del divisor
         split.setContinuousLayout(true);
         split.setOneTouchExpandable(true);
-        // Permite que ambos lados se contraigan hasta 0 px
+        // Permite que ambos lados se contraigan 
         panelIzquierdo.setMinimumSize(new Dimension(0, 0));
         menuPestanas.setMinimumSize(new Dimension(0, 0));
         contentPanel.setMinimumSize(new Dimension(0, 0));
@@ -125,7 +148,7 @@ public class PanelInicioUsuario extends JPanel {
                 contentPanel.add(buildSolicitudView(), BorderLayout.CENTER);
                 break;
             case TAB_COMBUSTIBLE:
-                contentPanel.add(new PanelSolicitudCombustible(usuarioActual.getId(), usuarioActual.getNomUsuario()), BorderLayout.CENTER);
+                contentPanel.add(new PanelSolicitudCombustibleUsuario(usuarioActual.getId(), usuarioActual.getNomUsuario()), BorderLayout.CENTER);
                 break;
             case TAB_FLUIDOS:
                 contentPanel.add(new PanelSolicitudFluidosUsuario(usuarioActual.getId()), BorderLayout.CENTER);
@@ -146,7 +169,6 @@ public class PanelInicioUsuario extends JPanel {
         contentPanel.repaint();
     }
 
-    // Utilidades de estilo: panel sin fondo oscuro
     private JPanel panelClear(LayoutManager lm) {
         JPanel p = new JPanel(lm);
         p.setOpaque(false);
@@ -161,7 +183,7 @@ public class PanelInicioUsuario extends JPanel {
     }
 
  
-    /** Vista: Solicitud de Material (sin paneles oscuros) */
+    /** Solicitud de un material */
     private JComponent buildSolicitudView() {
         JPanel root = panelClear(new BorderLayout(12,12));
 
@@ -201,7 +223,7 @@ public class PanelInicioUsuario extends JPanel {
                 SwingUtilities.getWindowAncestor(this) instanceof JFrame ? (JFrame) SwingUtilities.getWindowAncestor(this) : null,
                 "Solicitudes de Material", true
         );
-        dlg.setContentPane(new PanelTicketsUsuario(solicitanteId, null)); // idJefe se define al aprobar
+        dlg.setContentPane(new PanelTicketInsumoUsuario(solicitanteId, null)); // idJefe se define al aprobar
         dlg.pack();
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
@@ -241,13 +263,6 @@ public class PanelInicioUsuario extends JPanel {
             }
         });
         return b;
-    }
-
-    private JComponent buildHistorialView() {
-        JPanel root = panelClear(new BorderLayout(12,12));
-        PanelHistorial ph = new PanelHistorial(usuarioActual, false); // false = vista usuario, no admin
-        root.add(ph, BorderLayout.CENTER);
-        return root;
     }
 
 }

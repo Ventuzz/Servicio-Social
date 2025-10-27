@@ -7,6 +7,9 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.geom.RoundRectangle2D;
 
+/*-----------------------------------------------
+    Campo de contraseña personalizado
+ -----------------------------------------------*/
 public class CustomPasswordField extends JPasswordField {
 
     private Color borderColor = new Color(70, 70, 70);

@@ -10,6 +10,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/*-----------------------------------------------
+    Vista de tabla para el inventario
+ -----------------------------------------------*/
 public class InventarioTablaModel extends AbstractTableModel {
 
     private List<InventarioItem> items = new ArrayList<>();

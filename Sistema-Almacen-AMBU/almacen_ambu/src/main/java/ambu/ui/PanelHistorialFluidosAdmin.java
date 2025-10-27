@@ -14,9 +14,15 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
+import javax.swing.JComponent;
 
+/*-----------------------------------------------
+    Panel de historial de Aceites y Anticongelantes
+ -----------------------------------------------*/
 
-public class PanelHistorialAceites extends JPanel {
+public class PanelHistorialFluidosAdmin extends JPanel {
 
     private JTable table;
     private HistorialModel model;
@@ -28,11 +34,13 @@ public class PanelHistorialAceites extends JPanel {
 
     private final FluidosService service = new FluidosService();
 
-    public PanelHistorialAceites(){
+    public PanelHistorialFluidosAdmin(){
         buildUI();
         cargar();
     }
-
+/*-----------------------------------------------
+    Ensamble de la ventana
+ -----------------------------------------------*/
     private void buildUI(){
         setLayout(new BorderLayout(12,12));
         setBorder(new EmptyBorder(12,12,12,12));
@@ -61,6 +69,16 @@ public class PanelHistorialAceites extends JPanel {
         btnRefrescar = new JButton(new AbstractAction("Refrescar"){
             @Override public void actionPerformed(java.awt.event.ActionEvent e){ cargar(); }
         });
+        
+        // Atajo del teclado
+                getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("F5"), "refreshF5");
+                    getActionMap().put("refreshF5", new AbstractAction() {
+                        @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+                            cargar();
+                        }
+                    });
+        
         btnExportar = new JButton(new AbstractAction("Exportar CSV"){
             @Override public void actionPerformed(java.awt.event.ActionEvent e){ exportarCSV(); }
         });
@@ -74,7 +92,7 @@ public class PanelHistorialAceites extends JPanel {
     private void cargar(){
         new SwingWorker<java.util.List<HistorialRow>, Void>(){
             protected java.util.List<HistorialRow> doInBackground() throws Exception { return fetch(); }
-            protected void done(){ try { model.setData(get()); } catch(Exception ex){ JOptionPane.showMessageDialog(PanelHistorialAceites.this, ex.getMessage()); }}
+            protected void done(){ try { model.setData(get()); } catch(Exception ex){ JOptionPane.showMessageDialog(PanelHistorialFluidosAdmin.this, ex.getMessage()); }}
         }.execute();
     }
 
@@ -111,7 +129,9 @@ public class PanelHistorialAceites extends JPanel {
             return out;
         }
     }
-
+/*-----------------------------------------------
+    Devoluciones de Aceites y Anticongelantes
+ -----------------------------------------------*/
     private void onDevolver(){
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) { JOptionPane.showMessageDialog(this, "Selecciona un ticket."); return; }
@@ -136,7 +156,9 @@ public class PanelHistorialAceites extends JPanel {
             JOptionPane.showMessageDialog(this, "Error al registrar devolución: "+ex.getMessage());
         }
     }
-
+/*----------------------
+    EXportar a excel
+ -----------------------*/
     private void exportarCSV(){
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Guardar historial (CSV)");

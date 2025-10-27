@@ -3,6 +3,9 @@ package ambu.models;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/*-----------------------------------------------
+ Items en el inventario con detalles
+ -----------------------------------------------*/
 public class InventarioItem {
     private int id;
     private String marca;

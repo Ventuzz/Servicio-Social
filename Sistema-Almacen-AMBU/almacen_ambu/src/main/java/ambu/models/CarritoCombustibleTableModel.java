@@ -1,13 +1,14 @@
 package ambu.models;
 
-import ambu.models.CombustibleItem;
-
 import javax.swing.table.AbstractTableModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
+/*-----------------------------------------------
+  Vista de tabla para el carrito de combustible
+ -----------------------------------------------*/
 public class CarritoCombustibleTableModel extends AbstractTableModel {
     private final String[] cols = {"Combustible", "Cantidad", "Unidad", "Observaciones"};
     private final List<CombustibleItem> data = new ArrayList<CombustibleItem>();
@@ -20,6 +21,10 @@ public class CarritoCombustibleTableModel extends AbstractTableModel {
     public String getColumnName(int c) { return cols[c]; }
     public CombustibleItem getAt(int idx) { return data.get(idx); }
     public List<CombustibleItem> getData() { return new ArrayList<CombustibleItem>(data); }
+
+/*-----------------------------------------------
+Obtiene el valor en la celda especificada
+ -----------------------------------------------*/
 
     @Override public Object getValueAt(int r, int c) {
         CombustibleItem it = data.get(r);
@@ -34,6 +39,9 @@ public class CarritoCombustibleTableModel extends AbstractTableModel {
 
     @Override public boolean isCellEditable(int r, int c) { return c != 0; }
 
+/*---------------------------------------------------
+    Para establece el valor en la celda especificada
+ ---------------------------------------------------*/
     @Override public void setValueAt(Object v, int r, int c) {
         CombustibleItem it = data.get(r);
         try {
