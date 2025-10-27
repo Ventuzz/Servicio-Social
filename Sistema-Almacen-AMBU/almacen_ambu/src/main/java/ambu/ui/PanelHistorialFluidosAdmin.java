@@ -14,9 +14,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import javax.swing.AbstractAction;
-import javax.swing.KeyStroke;
-import javax.swing.JComponent;
 
 /*-----------------------------------------------
     Panel de historial de Aceites y Anticongelantes
@@ -159,34 +156,32 @@ public class PanelHistorialFluidosAdmin extends JPanel {
 /*----------------------
     EXportar a excel
  -----------------------*/
-    private void exportarCSV(){
+    private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Guardar historial (CSV)");
         if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             java.io.File f = fc.getSelectedFile();
             if (!f.getName().toLowerCase().endsWith(".csv")) {
-                f = new java.io.File(f.getParentFile(), f.getName()+".csv");
+                f = new java.io.File(f.getParentFile(), f.getName() + ".csv");
             }
             try (FileWriter w = new FileWriter(f)) {
-                // encabezados
                 for (int c=0;c<model.getColumnCount();c++) {
                     if (c>0) w.write(",");
                     w.write(model.getColumnName(c));
                 }
-                w.write("");
-                // filas
+                w.write("\n");
                 for (int r=0;r<model.getRowCount();r++) {
                     for (int c=0;c<model.getColumnCount();c++) {
                         if (c>0) w.write(",");
                         Object val = model.getValueAt(r,c);
-                        w.write(val==null?"":String.valueOf(val));
+                        w.write(val==null? "": String.valueOf(val));
                     }
-                    w.write("");
+                    w.write("\n");
                 }
                 w.flush();
-                JOptionPane.showMessageDialog(this, "Archivo exportado: "+f.getAbsolutePath());
+                JOptionPane.showMessageDialog(this, "Archivo exportado: " + f.getAbsolutePath());
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error al exportar: "+ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Error al exportar: " + ex.getMessage());
             }
         }
     }
