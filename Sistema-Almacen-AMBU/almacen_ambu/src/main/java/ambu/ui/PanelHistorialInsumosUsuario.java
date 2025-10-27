@@ -14,7 +14,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-
+/*-----------------------------------------------
+    Panel de historial de solicitudes tipo insumo para un usuario
+ -----------------------------------------------*/
 public class PanelHistorialInsumosUsuario extends JPanel {
 
     private final Long usuarioId;
@@ -32,7 +34,9 @@ public class PanelHistorialInsumosUsuario extends JPanel {
         buildUI();
         cargar();
     }
-
+/*-----------------------------------------------
+    Ensamble de la ventana 
+ -----------------------------------------------*/
     private void buildUI() {
         setLayout(new BorderLayout(12, 12));
         setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -50,6 +54,8 @@ public class PanelHistorialInsumosUsuario extends JPanel {
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         btnRefrescar = new JButton("Refrescar");
         btnRefrescar.addActionListener(e -> cargar());
+        // Asignar atajo de teclado F5
+
         btnExportar = new JButton("Exportar CSV");
         btnExportar.addActionListener(e -> exportarCSV());
         south.add(btnRefrescar);
@@ -99,7 +105,9 @@ public class PanelHistorialInsumosUsuario extends JPanel {
             }
         }
     }
-
+/*-----------------------------------------------
+    Exportar a un excel
+ -----------------------------------------------*/
     private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Guardar historial (CSV)");

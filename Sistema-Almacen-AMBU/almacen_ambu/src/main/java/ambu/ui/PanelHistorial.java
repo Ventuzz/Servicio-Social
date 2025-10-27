@@ -25,6 +25,9 @@ import java.util.Date;
 import java.util.List;
 
 
+/*-----------------------------------------------
+    Panel para mostrar el historial de insumos
+ -----------------------------------------------*/
 public class PanelHistorial extends JPanel {
 
     private final Usuario usuarioActual;
@@ -345,7 +348,7 @@ public class PanelHistorial extends JPanel {
 
         String unidad = (r.unidadEnt == null ? "" : r.unidadEnt);
 
-        // Diálogo de devolución parcial – NO modifica existencias, solo prestamos.* (TicketsService)
+        // Diálogo de devolución parcial * (TicketsService)
         DevolucionParcialDialog.show(
             SwingUtilities.getWindowAncestor(this),
             ticketsService,

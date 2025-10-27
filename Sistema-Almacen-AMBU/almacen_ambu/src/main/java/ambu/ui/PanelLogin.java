@@ -1,7 +1,6 @@
 package ambu.ui;
 
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
@@ -28,8 +27,11 @@ import ambu.ui.componentes.CustomButton;
 import ambu.ui.componentes.CustomPasswordField;
 import ambu.ui.componentes.CustomTextField;
 import ambu.ui.componentes.PanelTransicion;
-import ambu.ui.dialog.RegistroDialog;
 
+
+/*-----------------------------------------------
+    Panel para hacer el proceso de login
+ -----------------------------------------------*/
 class RoundedPanel extends JPanel {
     private int cornerRadius = 25; 
     private Color bgColor = new Color(0, 0, 0, 100); 

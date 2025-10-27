@@ -1,11 +1,20 @@
 package ambu.ui.componentes;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
+import javax.swing.JButton;
+
+/*----------------------------------
+    Campo para personalizar botones
+ -----------------------------------*/
 public class CustomButton extends JButton {
 
     private Color backgroundColor = new Color(20, 255, 120, 150); // Verde neón semi-transparente
@@ -15,12 +24,12 @@ public class CustomButton extends JButton {
 
     public CustomButton(String text) {
         super(text);
-        setContentAreaFilled(false); // No dibujar el fondo estándar
-        setFocusPainted(false); // No dibujar el recuadro de foco
-        setBorderPainted(false); // No dibujar el borde estándar
-        setForeground(Color.WHITE); // Texto blanco
-        setFont(new Font("Arial", Font.BOLD, 16)); // Fuente negrita
-        setCursor(new Cursor(Cursor.HAND_CURSOR)); // Cursor de mano al pasar por encima
+        setContentAreaFilled(false);
+        setFocusPainted(false);
+        setBorderPainted(false); 
+        setForeground(Color.WHITE);
+        setFont(new Font("Arial", Font.BOLD, 16));
+        setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         addMouseListener(new MouseAdapter() {
             @Override

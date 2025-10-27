@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/*-----------------------------------------------
+    Panel historial Fluidos para la vista de usuario
+ -----------------------------------------------*/
 
 public class PanelHistorialFluidosUsuario extends JPanel {
 
@@ -32,6 +35,9 @@ public class PanelHistorialFluidosUsuario extends JPanel {
         buildUI();
         cargar();
     }
+/*-----------------------------------------------
+    Ensamble de la ventana de historial
+ -----------------------------------------------*/
 
     private void buildUI() {
         setLayout(new BorderLayout(12, 12));
@@ -104,7 +110,9 @@ public class PanelHistorialFluidosUsuario extends JPanel {
             }
         }
     }
-
+/*---------------------
+    Exportar a excel
+ -------------------*/
     private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Guardar historial (CSV)");

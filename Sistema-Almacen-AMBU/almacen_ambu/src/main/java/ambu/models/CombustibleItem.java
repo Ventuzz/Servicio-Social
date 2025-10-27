@@ -2,6 +2,9 @@ package ambu.models;
 
 import java.math.BigDecimal;
 
+/*-------------------------------------
+    Item de combustible en el carrito
+ -------------------------------------*/
 public class CombustibleItem {
     private Integer idExistencia;       // existencias.id (obligatorio)
     private String articulo;            // display

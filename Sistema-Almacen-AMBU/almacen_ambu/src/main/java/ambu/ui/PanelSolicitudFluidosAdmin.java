@@ -14,8 +14,11 @@ import java.awt.event.ActionEvent;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/*-----------------------------------------------
+    Panel para la solicitud de anticongelantes y Aceites
+ -----------------------------------------------*/
 
-public class PanelSolicitudFluidos extends JPanel {
+public class PanelSolicitudFluidosAdmin extends JPanel {
 
     private final FluidosService service = new FluidosService(); // servicio JDBC
 
@@ -41,7 +44,7 @@ public class PanelSolicitudFluidos extends JPanel {
     private static final Color DK_FG  = Color.WHITE;
     private static final Color DK_BRD = new Color(70,70,70);
 
-    public PanelSolicitudFluidos() {
+    public PanelSolicitudFluidosAdmin() {
         buildUI();
         cargarStockAsync();
     }
@@ -76,6 +79,14 @@ public class PanelSolicitudFluidos extends JPanel {
         northRight.add(btnRefrescar);
         panelInventario.add(northRight, BorderLayout.SOUTH);
 
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+        .put(KeyStroke.getKeyStroke("F5"), "refreshF5");
+            getActionMap().put("refreshF5", new AbstractAction() {
+                @Override public void actionPerformed(ActionEvent e) {
+                    cargarStockAsync();
+                }
+            });
+            
         // === Formulario inferior ===
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
@@ -140,7 +151,7 @@ public class PanelSolicitudFluidos extends JPanel {
                 return service.listarFluidosStock();
             }
             protected void done(){ try { stockModel.setData(get()); } catch(Exception ex){
-                JOptionPane.showMessageDialog(PanelSolicitudFluidos.this, "Error al cargar inventario: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(PanelSolicitudFluidosAdmin.this, "Error al cargar inventario: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }}
         }.execute();
     }
@@ -199,8 +210,8 @@ public class PanelSolicitudFluidos extends JPanel {
             @Override
             protected void done() {
                 try {
-                    get(); // Llama a get() para propagar cualquier excepción del doInBackground
-                    JOptionPane.showMessageDialog(PanelSolicitudFluidos.this, "Solicitud creada correctamente.", "OK", JOptionPane.INFORMATION_MESSAGE);
+                    get(); 
+                    JOptionPane.showMessageDialog(PanelSolicitudFluidosAdmin.this, "Solicitud creada correctamente.", "OK", JOptionPane.INFORMATION_MESSAGE);
                     // Limpiar formulario
                     txtSolicitante.setText("");
                     txtVehiculo.setText("");
@@ -208,7 +219,7 @@ public class PanelSolicitudFluidos extends JPanel {
                     txtCantidad.setText("");
                     tblStock.clearSelection();
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(PanelSolicitudFluidos.this, "Error al crear la solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(PanelSolicitudFluidosAdmin.this, "Error al crear la solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();

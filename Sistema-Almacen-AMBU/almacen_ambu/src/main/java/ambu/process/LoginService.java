@@ -1,12 +1,20 @@
 package ambu.process;
 
-import ambu.mysql.DatabaseConnection;
-import ambu.models.Usuario;
-import org.mindrot.jbcrypt.BCrypt;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.mindrot.jbcrypt.BCrypt;
+
+import ambu.models.Usuario;
+import ambu.mysql.DatabaseConnection;
+
+/*---------------------------------------
+        Gestor de Login y Usuarios
+ ----------------------------------------*/
 
 public class LoginService {
 

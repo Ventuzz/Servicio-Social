@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/*-----------------------------------------------
+    Panel de solicitud de combustibles para un administrador
+ -----------------------------------------------*/
 public class PanelSolicitudCombustibleAdmin extends JPanel {
 
     private final TicketsService service = new TicketsService();
@@ -336,8 +339,6 @@ form.add(txtUnidad, gbc);
         txtKilometraje.setText("");
         txtCantidad.setText("");
         txtUnidad.setText("");
-        // Nota: no limpio el solicitante por si el admin quiere cargar varias
-        // a nombre de la misma persona.
     }
 
     // --- Modelos y DTOs ---

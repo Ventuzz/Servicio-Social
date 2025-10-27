@@ -1,20 +1,30 @@
 package ambu.ui;
 
-import ambu.models.Usuario;
-import ambu.process.TicketsService;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
 
-import javax.swing.*;
-import java.awt.*;
-import ambu.models.Usuario; 
-import ambu.ui.PanelHistorial;
-import ambu.ui.componentes.CustomTabbedPaneUI;
-import ambu.ui.componentes.PanelTransicion;
-import ambu.ui.PanelSolicitudCombustibleAdmin;
-import ambu.ui.PanelHistorialGasolina;
-
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
 
+import ambu.models.Usuario;
+import ambu.process.TicketsService;
+import ambu.ui.componentes.CustomTabbedPaneUI;
+
+/*-----------------------------------------------
+    Panel de inicio de sesión de un administrador
+ -----------------------------------------------*/
 
 public class PanelInicioAdmin extends JPanel {
 
@@ -24,7 +34,7 @@ public class PanelInicioAdmin extends JPanel {
     private JSplitPane splitPane;
     private Usuario usuario;
 
-    // Constructor modificado para aceptar la acción de logout
+    
     public PanelInicioAdmin(Usuario usuario, Runnable onLogout) {
         this.usuario = usuario;
 
@@ -87,25 +97,25 @@ public class PanelInicioAdmin extends JPanel {
         panelDerecho = new JPanel(cardLayout);
         panelDerecho.setOpaque(false);
 
-        PanelTicketAdmin panelTicketAdmin = new PanelTicketAdmin(usuario.getId());
+        PanelTicketInsumoAdmin panelTicketAdmin = new PanelTicketInsumoAdmin(usuario.getId());
         panelDerecho.add(panelTicketAdmin, "Ticket Insumos");
         PanelSolicitudCombustibleAdmin panelTicketCombustibleAdmin = new PanelSolicitudCombustibleAdmin();
         panelDerecho.add(panelTicketCombustibleAdmin, "Ticket Combustible");
-        PanelSolicitudFluidos panelTicketFluidosAdmin = new PanelSolicitudFluidos();
+        PanelSolicitudFluidosAdmin panelTicketFluidosAdmin = new PanelSolicitudFluidosAdmin();
         panelDerecho.add(panelTicketFluidosAdmin, "Ticket Fluidos");
         PanelUsuarios panelUsuarios = new PanelUsuarios(usuario);
         panelDerecho.add(panelUsuarios, "Usuarios");
         PanelInventario panelInventario = new PanelInventario();
         panelDerecho.add(panelInventario, "Inventario");
-        PanelAprobacionesAdmin panelAprobaciones = new PanelAprobacionesAdmin(usuario.getId(), true, new TicketsService());
+        PanelAprobacionesInsumosAdmin panelAprobaciones = new PanelAprobacionesInsumosAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobaciones, "Aprobaciones Insumos");
         PanelAprobacionesGasolinaAdmin panelAprobacionesGasolina = new PanelAprobacionesGasolinaAdmin(usuario.getId(), true, new TicketsService());
         panelDerecho.add(panelAprobacionesGasolina, "Aprobaciones Gasolina");
         PanelAprobacionesFluidosAdmin panelAprobacionesFluidos = new PanelAprobacionesFluidosAdmin();
         panelDerecho.add(panelAprobacionesFluidos, "Aprobaciones Fluidos");
         panelDerecho.add(new PanelHistorial(usuario, true), "Historial Insumos");
-        panelDerecho.add(new PanelHistorialGasolina(), "Historial Gasolina");
-        panelDerecho.add(new PanelHistorialAceites(), "Historial Fluidos");
+        panelDerecho.add(new PanelHistorialGasolinaAdmin(), "Historial Gasolina");
+        panelDerecho.add(new PanelHistorialFluidosAdmin(), "Historial Fluidos");
 
         // 5. LÓGICA DE CAMBIO DE PESTAÑA
         menuPestanas.addChangeListener(e -> {

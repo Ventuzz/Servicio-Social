@@ -1,14 +1,22 @@
 package ambu.process;
 
-import ambu.mysql.DatabaseConnection;
-import ambu.models.InventarioItem;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JOptionPane;
-import javax.xml.crypto.Data;
 
+import javax.swing.JOptionPane;
+
+import ambu.models.InventarioItem;
+import ambu.mysql.DatabaseConnection;
+
+/*------------------------
+    Gestor de inventario
+ -------------------------*/
 public class InventarioService {
 
     public List<InventarioItem> obtenerInventario() {

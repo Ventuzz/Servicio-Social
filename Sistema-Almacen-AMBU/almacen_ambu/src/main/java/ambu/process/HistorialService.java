@@ -8,7 +8,9 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/*-----------------------------------------------
+    Gestor del historial unificado
+ -----------------------------------------------*/
 public class HistorialService {
 
     public HistorialService() {}
@@ -36,7 +38,6 @@ public class HistorialService {
         });
         return out;
     }
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 public class HistorialServiceCombustiblePatch {
@@ -145,7 +146,9 @@ public List<RegistroHistorial> mapearHistorialCombustiblePorUsuario(Connection c
         return out;
     }
 
-    /** Marca un préstamo como DEVUELTO. */
+/*-----------------------------------------------
+    Registra la devolución de un préstamo completo
+ -----------------------------------------------*/
     public boolean registrarDevolucion(int idPrestamo, long idUsuarioReceptor) throws SQLException {
         String sql = "UPDATE prestamos SET estado='DEVUELTO', fecha_devolucion=CURRENT_TIMESTAMP, " +
                      "id_usuario_receptor_dev = ? " + 
@@ -178,7 +181,9 @@ public List<RegistroHistorial> mapearHistorialCombustiblePorUsuario(Connection c
     }
 }
 
-    // ----- Queries internas -----
+/*-----------------------------------------------
+    Consulta las solicitudes en el historial
+ -----------------------------------------------*/
 
     private List<RegistroHistorial> querySolicitudes(Connection cn, Long filterSolicitante) throws SQLException {
         String sql =

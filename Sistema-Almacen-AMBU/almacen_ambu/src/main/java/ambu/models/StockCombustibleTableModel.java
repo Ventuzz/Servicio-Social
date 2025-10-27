@@ -1,11 +1,13 @@
 package ambu.models;
 
-import ambu.process.CombustibleExistenciasService.ExistenciaStockLite;
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.util.List;
 
+/*------------------------------------
+    Tabla del stock de combustible
+ ------------------------------------*/
 public final class StockCombustibleTableModel extends AbstractTableModel {
 
     private final String[] cols = { "ID", "Artículo", "Unidad", "Disponible" };
@@ -57,7 +59,7 @@ public final class StockCombustibleTableModel extends AbstractTableModel {
         }
     }
 
-    // Helpers
+    // Helper
     private static Object tryGet(Object target, String... getters) {
         for (String g : getters) {
             try {

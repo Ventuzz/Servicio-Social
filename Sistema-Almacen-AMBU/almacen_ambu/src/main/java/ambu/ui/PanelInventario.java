@@ -24,10 +24,17 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
+import javax.swing.JComponent;
 
 import java.awt.event.MouseAdapter;
 import java.util.List;
 
+
+/*-------------------------
+    Panel de inventario
+ -------------------------*/
 
 public class PanelInventario extends JPanel {
 
@@ -40,6 +47,7 @@ public class PanelInventario extends JPanel {
     private CustomButton btnAnadir;
     private CustomButton btnEliminar;
     private JButton btnActualizarFoto;
+    private CustomButton btnRefrescar;
 
     public PanelInventario() {
         this.inventarioService = new InventarioService();
@@ -81,10 +89,12 @@ public class PanelInventario extends JPanel {
         btnAnadir  = new CustomButton("Añadir Artículo");
         btnEliminar= new CustomButton("Eliminar Seleccionado");
         btnActualizarFoto = new CustomButton("Actualizar foto");
+        btnRefrescar = new CustomButton("Refrescar");
         panelBotones.add(btnEliminar);
         panelBotones.add(btnGuardar);
         panelBotones.add(btnAnadir);
         panelBotones.add(btnActualizarFoto);
+        panelBotones.add(btnRefrescar);
         panelSur.add(panelBotones, BorderLayout.EAST);
 
         add(panelSur, BorderLayout.SOUTH);
@@ -471,6 +481,15 @@ public class PanelInventario extends JPanel {
             dialog.setVisible(true);
         });
 
+        // Refrescar
+        btnRefrescar.addActionListener(e -> cargarDatosAsync());
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+        .put(KeyStroke.getKeyStroke("F5"), "refreshF5");
+            getActionMap().put("refreshF5", new AbstractAction() {
+                @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+                    cargarDatosAsync();
+                }
+            });
         // Eliminar
         btnEliminar.addActionListener(e -> {
             int viewRow = tablaInventario.getSelectedRow();

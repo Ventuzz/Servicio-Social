@@ -7,7 +7,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/*-----------------------------------------------
+    Tabla del stock de fluidos
+ -----------------------------*/
 public class StockFluidosTableModel extends AbstractTableModel {
 
     private final List<FluidosService.FluidoStockLite> rows = new ArrayList<>();

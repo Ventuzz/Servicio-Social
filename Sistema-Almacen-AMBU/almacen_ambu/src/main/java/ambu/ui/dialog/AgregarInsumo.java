@@ -20,17 +20,9 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/**
- * Diálogo para agregar un insumo a una solicitud (ticket) existente.
- *
- * - Lista de existencias disponibles con buscador.
- * - Formulario de cantidad, unidad y observaciones.
- * - Devuelve la selección mediante un callback OnSave.
- *
- * Requisitos:
- *  - Java 11
- *  - TicketsService con método listarDisponibles() que devuelve List<DisponibleItem>
- */
+/*-----------------------------------------------
+    Ventana para agregar un insumo 
+ -----------------------------------------------*/
 public final class AgregarInsumo extends JDialog {
 
     @FunctionalInterface

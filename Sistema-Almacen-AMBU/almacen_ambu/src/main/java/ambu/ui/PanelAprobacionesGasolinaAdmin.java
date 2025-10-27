@@ -18,6 +18,9 @@ import java.util.Date;
 import java.util.List;
 import java.awt.event.KeyEvent;
 
+/*---------------------------------------------------------------------
+    Panel para las aprobaciones tickets de gasolina para administrador
+ ----------------------------------------------------------------------*/
 
 public class PanelAprobacionesGasolinaAdmin extends JPanel {
 
@@ -35,7 +38,7 @@ public class PanelAprobacionesGasolinaAdmin extends JPanel {
     private JButton btnAprobar;
     private JButton btnRechazar;
     private JButton btnRefrescar;
-    private JButton btnEntregar;
+
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
@@ -250,30 +253,122 @@ private void cargarCabeceras() {
     private static String nvl(String s) { return s == null ? "" : s; }
 
     // --- Acciones ---
-    private void onAprobar() {
-        Integer id = getIdSeleccionado();
-        if (id == null) {
-            JOptionPane.showMessageDialog(this, "Selecciona un ticket.", "Aviso", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        int ok = JOptionPane.showConfirmDialog(this,
-                "¿Aprobar esta solicitud de combustible?",
-                "Confirmar", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (ok != JOptionPane.YES_OPTION) return;
+private void onAprobar() {
+    Integer idTicket = getIdSeleccionado();
+    if (idTicket == null) {
+        JOptionPane.showMessageDialog(this, "Selecciona un ticket.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
 
-        new SwingWorker<Void, Void>() {
-            @Override protected Void doInBackground() throws Exception {
-                // Método del servicio específico para control_combustible
-                service.aprobarRechazarCombustible(id, true);
-                return null;
-            }
-            @Override protected void done() {
-                try { get(); } catch (Exception ignore) {}
+    int viewRow = tblCabeceras.getSelectedRow();
+    int modelRow = tblCabeceras.convertRowIndexToModel(viewRow);
+    Object vCant = cabeceraModel.getValueAt(modelRow, 5); 
+    java.math.BigDecimal cantidadSolicitada = null;
+    if (vCant instanceof java.math.BigDecimal) {
+        cantidadSolicitada = (java.math.BigDecimal) vCant;
+    } else if (vCant != null) {
+        try { cantidadSolicitada = new java.math.BigDecimal(String.valueOf(vCant)); } catch (Exception ignore) {}
+    }
+    if (cantidadSolicitada == null) cantidadSolicitada = java.math.BigDecimal.ZERO;
+
+    java.math.BigDecimal disponible = consultarDisponiblePorTicket(idTicket);
+    if (disponible == null) disponible = java.math.BigDecimal.ZERO;
+
+    if (cantidadSolicitada.compareTo(disponible) > 0) {
+        JOptionPane.showMessageDialog(
+                this,
+                "No es posible prestar esa cantidad.\nDisponible: " + disponible + "\nSolicitada: " + cantidadSolicitada,
+                "Stock insuficiente",
+                JOptionPane.ERROR_MESSAGE
+        );
+        return; 
+    }
+
+    int ok = JOptionPane.showConfirmDialog(
+            this,
+            "¿Aprobar esta solicitud de combustible?",
+            "Confirmar",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+    );
+    if (ok != JOptionPane.YES_OPTION) return;
+
+    new SwingWorker<Void, Void>() {
+        @Override protected Void doInBackground() throws Exception {
+            service.aprobarRechazarCombustible(idTicket, true);
+            return null;
+        }
+        @Override protected void done() {
+            try {
+                get(); 
                 cargarCabeceras();
                 actualizarBotonesSegunEstado();
+            } catch (java.util.concurrent.ExecutionException ex) {
+                String msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+                if (msg == null || msg.trim().isEmpty()) msg = "No fue posible aprobar la solicitud.";
+                JOptionPane.showMessageDialog(PanelAprobacionesGasolinaAdmin.this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(PanelAprobacionesGasolinaAdmin.this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
-        }.execute();
+        }
+    }.execute();
+}
+
+
+private java.math.BigDecimal consultarDisponiblePorTicket(int idTicket) {
+    try (java.sql.Connection cn = DatabaseConnection.getConnection()) {
+        String colStock = detectarColumnaStockExistencias(cn);
+        if (colStock == null) {
+            colStock = "cantidad_fisica";
+        }
+
+        Integer idExistencia = null;
+        try (PreparedStatement ps = cn.prepareStatement(
+                "SELECT id_existencia FROM control_combustible WHERE id_control_combustible = ?")) {
+            ps.setInt(1, idTicket);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) idExistencia = (Integer) rs.getObject(1);
+            }
+        }
+        if (idExistencia == null) return java.math.BigDecimal.ZERO;
+
+        try (PreparedStatement ps = cn.prepareStatement(
+                "SELECT " + colStock + " FROM existencias WHERE id = ?")) {
+            ps.setInt(1, idExistencia.intValue());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    java.math.BigDecimal stock = rs.getBigDecimal(1);
+                    return stock != null ? stock : java.math.BigDecimal.ZERO;
+                }
+            }
+        }
+    } catch (Exception ex) {
+        ex.printStackTrace();
     }
+    return java.math.BigDecimal.ZERO;
+}
+
+private String detectarColumnaStockExistencias(java.sql.Connection cn) {
+    final String[] candidatos = { "cantidad_fisica", "cantidad", "stock", "existencia" };
+    try (Statement st = cn.createStatement();
+         ResultSet rsDB = st.executeQuery("SELECT DATABASE()")) {
+        rsDB.next();
+        String dbName = rsDB.getString(1);
+
+        final String sql =
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'existencias'";
+        java.util.Set<String> cols = new java.util.HashSet<>();
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, dbName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) cols.add(rs.getString(1).toLowerCase());
+            }
+        }
+        for (String c : candidatos) if (cols.contains(c.toLowerCase())) return c;
+    } catch (Exception ignore) {}
+    return null;
+}
 
 
 
@@ -284,7 +379,6 @@ private void cargarCabeceras() {
             return;
         }
         String motivo = JOptionPane.showInputDialog(this, "Motivo del rechazo (opcional):", "Rechazar", JOptionPane.QUESTION_MESSAGE);
-        // La tabla control_combustible no tiene campo motivo por defecto; si lo agregas, aquí podrías guardarlo.
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() throws Exception {
                 service.aprobarRechazarCombustible(id, false);

@@ -10,6 +10,9 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.text.NumberFormat;
 
+/*-----------------------------------------------
+        Devolución parcial de préstamo
+ -----------------------------------------------*/
 public class DevolucionParcialDialog extends JDialog {
 
     private final TicketsService ticketsService;

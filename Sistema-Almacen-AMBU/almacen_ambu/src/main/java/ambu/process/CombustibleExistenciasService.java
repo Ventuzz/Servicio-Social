@@ -7,6 +7,9 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/*-----------------------------------------------
+     Gestor existencias de combustible
+ -----------------------------------------------*/
 public class CombustibleExistenciasService {
 
     public class ExistenciaStockLite {

@@ -1,9 +1,20 @@
 package ambu.ui.componentes;
 
-import javax.swing.*;
-import javax.swing.plaf.basic.BasicTabbedPaneUI;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
+
+/*----------------------------------
+    Campo para personalizar pestañas
+ -----------------------------------*/
 public class CustomTabbedPaneUI extends BasicTabbedPaneUI {
 
     private final Color tabBackgroundColor = new Color(25, 25, 25);

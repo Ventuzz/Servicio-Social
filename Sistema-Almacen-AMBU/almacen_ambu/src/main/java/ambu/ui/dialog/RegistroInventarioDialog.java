@@ -1,15 +1,18 @@
 package ambu.ui.dialog;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.filechooser.FileNameExtensionFilter;
-
-import ambu.models.InventarioItem;
-import ambu.process.InventarioService;
-import ambu.ui.componentes.CustomButton;
-import ambu.ui.componentes.CustomTextField;
-
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.io.File;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -18,6 +21,26 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.function.BiConsumer;
 
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import ambu.models.InventarioItem;
+import ambu.process.InventarioService;
+import ambu.ui.componentes.CustomButton;
+import ambu.ui.componentes.CustomTextField;
+
+/*-----------------------------------------------
+    Diálogo de registro de nuevo artículo en inventario
+ -----------------------------------------------*/
 public class RegistroInventarioDialog extends JDialog {
 
     private CustomTextField marcaField, articuloField, usoField, ubicacionField;
@@ -89,7 +112,6 @@ public class RegistroInventarioDialog extends JDialog {
         btnSubirFoto.addActionListener(e -> seleccionarFoto());
         btnGuardar.addActionListener(e -> {
             try {
-                // --- VALIDACIÓN 1: QUE NINGÚN CAMPO ESTÉ VACÍO ---
                 // Creamos una lista de todos los campos para revisarlos en un bucle.
                 CustomTextField[] todosLosCampos = {
                     marcaField, articuloField, usoField, ubicacionField,

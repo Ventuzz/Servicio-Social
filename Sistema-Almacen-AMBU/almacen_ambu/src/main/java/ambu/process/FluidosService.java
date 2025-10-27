@@ -7,6 +7,10 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/*-----------------------------------------------
+    Gestor de fluidos (aceite, anticongelante)
+ -----------------------------------------------*/
+
 
 public class FluidosService {
 
@@ -17,6 +21,7 @@ public class FluidosService {
         private String ubicacion;
         private BigDecimal cantidadFisica;
         private String tipoFluido;     // "ACEITE" o "ANTICONGELANTE"
+
         // getters/setters
         public Integer getId() { return id; }
         public void setId(Integer id) { this.id = id; }
@@ -66,7 +71,7 @@ public class FluidosService {
         }
     }
 
-    // ======== Resolver usuario por nombre (si existe) ========
+    // ======== Resolver usuario por nombre  ========
     public Long resolveUsuarioIdByNombre(String nombre) throws SQLException {
         if (nombre == null || nombre.trim().isEmpty()) return null;
         final String sql = "SELECT usuario_id FROM usuarios WHERE UPPER(nom_usuario)=UPPER(?) LIMIT 1";
@@ -120,32 +125,78 @@ public class FluidosService {
     }
 
     // ======== Aprobar / Rechazar ========
-    public void aprobarRechazarFluido(int idControlFluido, boolean aprobar) throws SQLException {
+public void aprobarRechazarFluido(int idControlFluido, boolean aprobar) throws SQLException {
         final String sqlEstado = "UPDATE control_fluidos SET estado=? WHERE id_control_fluido=?";
+        final String sqlCheckStock = "SELECT cantidad_fisica FROM existencias WHERE id=?";
+        final String sqlGetRequestData = "SELECT id_existencia_fluido, cantidad_entregada FROM control_fluidos WHERE id_control_fluido=?";
+        final String sqlDeductStock = "UPDATE existencias SET cantidad_fisica = cantidad_fisica - ? WHERE id = ?";
+        final String sqlSetEnPrestamo = "UPDATE control_fluidos SET estado='EN_PRESTAMO' WHERE id_control_fluido=?"; 
+
+        String nuevoEstado = aprobar ? "APROBADA" : "RECHAZADA";
+
         try (Connection cn = DatabaseConnection.getConnection()) {
-            cn.setAutoCommit(false);
-            try (PreparedStatement ps = cn.prepareStatement(sqlEstado)) {
-                ps.setString(1, aprobar ? "APROBADA" : "RECHAZADA");
-                ps.setInt(2, idControlFluido);
-                ps.executeUpdate();
-            }
-            // Si se aprueba, pasamos a EN_PRESTAMO y descontamos stock
-            if (aprobar) {
-                try (PreparedStatement ps = cn.prepareStatement(
-                        "UPDATE control_fluidos SET estado='EN_PRESTAMO' WHERE id_control_fluido=?")) {
-                    ps.setInt(1, idControlFluido);
-                    ps.executeUpdate();
+            cn.setAutoCommit(false); 
+
+            try {
+                if (aprobar) {
+                    int idExistencia;
+                    BigDecimal cantidadSolicitada;
+                    BigDecimal stockDisponible;
+
+                    try (PreparedStatement psGetData = cn.prepareStatement(sqlGetRequestData)) {
+                        psGetData.setInt(1, idControlFluido);
+                        try (ResultSet rs = psGetData.executeQuery()) {
+                            if (!rs.next()) {
+                                throw new SQLException("No se encontró la solicitud de fluido con ID: " + idControlFluido);
+                            }
+                            idExistencia = rs.getInt("id_existencia_fluido");
+                            cantidadSolicitada = rs.getBigDecimal("cantidad_entregada");
+                            if (cantidadSolicitada == null || cantidadSolicitada.compareTo(BigDecimal.ZERO) <= 0) {
+                                throw new SQLException("La cantidad solicitada es inválida o cero.");
+                            }
+                        }
+                    }
+
+                    try (PreparedStatement psCheck = cn.prepareStatement(sqlCheckStock + " FOR UPDATE")) {
+                        psCheck.setInt(1, idExistencia);
+                        try (ResultSet rs = psCheck.executeQuery()) {
+                            if (!rs.next()) {
+                                throw new SQLException("El artículo de fluido con ID " + idExistencia + " no existe en el inventario.");
+                            }
+                            stockDisponible = rs.getBigDecimal("cantidad_fisica");
+                            if (stockDisponible == null) {
+                                stockDisponible = BigDecimal.ZERO;
+                            }
+                        }
+                    }
+
+                    if (stockDisponible.compareTo(cantidadSolicitada) < 0) {
+                        throw new SQLException("Stock insuficiente para aprobar. Disponible: " + stockDisponible + ", Solicitado: " + cantidadSolicitada);
+                    }
+
+                    try (PreparedStatement psDeduct = cn.prepareStatement(sqlDeductStock)) {
+                        psDeduct.setBigDecimal(1, cantidadSolicitada);
+                        psDeduct.setInt(2, idExistencia);
+                        if (psDeduct.executeUpdate() == 0) {
+                             throw new SQLException("No se pudo actualizar el stock del artículo ID: " + idExistencia);
+                        }
+                    }
+                } 
+
+                try (PreparedStatement psStatus = cn.prepareStatement(sqlEstado)) {
+                    psStatus.setString(1, nuevoEstado);
+                    psStatus.setInt(2, idControlFluido);
+                    psStatus.executeUpdate();
                 }
-                try (PreparedStatement ps = cn.prepareStatement(
-                        "UPDATE existencias e JOIN control_fluidos c ON e.id=c.id_existencia_fluido " +
-                        "SET e.cantidad_fisica = COALESCE(e.cantidad_fisica,0) - COALESCE(c.cantidad_entregada,0) " +
-                        "WHERE c.id_control_fluido=?")) {
-                    ps.setInt(1, idControlFluido);
-                    ps.executeUpdate();
-                }
+
+                cn.commit(); 
+
+            } catch (SQLException ex) {
+                cn.rollback(); 
+                throw ex; 
+            } finally {
+                 cn.setAutoCommit(true); 
             }
-            cn.commit();
-            cn.setAutoCommit(true);
         }
     }
 
@@ -170,7 +221,7 @@ public class FluidosService {
     public void registrarDevolucion(int idControlFluido,
                                     BigDecimal cantidadDevuelta,
                                     String unidadDevuelta,
-                                    Long idUsuarioRecibeAlmacen // opcional
+                                    Long idUsuarioRecibeAlmacen 
     ) throws SQLException {
         if (cantidadDevuelta == null || cantidadDevuelta.compareTo(BigDecimal.ZERO) <= 0) return;
         try (Connection cn = DatabaseConnection.getConnection()) {
@@ -178,7 +229,6 @@ public class FluidosService {
             BigDecimal ent = BigDecimal.ZERO;
             BigDecimal dev = BigDecimal.ZERO;
             int idExistencia = 0;
-            // Leer estado actual
             try (PreparedStatement ps = cn.prepareStatement(
                     "SELECT COALESCE(cantidad_entregada,0), COALESCE(cantidad_devuelta,0), id_existencia_fluido FROM control_fluidos WHERE id_control_fluido=? FOR UPDATE")) {
                 ps.setInt(1, idControlFluido);
@@ -207,7 +257,7 @@ public class FluidosService {
                 ps.setInt(5, idControlFluido);
                 ps.executeUpdate();
             }
-            // Regresar stock SOLO por el incremento
+            // Regresar stock 
             try (PreparedStatement ps = cn.prepareStatement(
                     "UPDATE existencias SET cantidad_fisica = COALESCE(cantidad_fisica,0) + ? WHERE id=?")) {
                 ps.setBigDecimal(1, cantidadDevuelta);

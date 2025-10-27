@@ -1,11 +1,19 @@
 package ambu.excel;
 
-import javax.swing.JTable;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import javax.swing.JTable;
+/*-----------------------------------------------
+  Exportador de datos de JTable a archivo CSV
+ -----------------------------------------------*/
 public final class CsvExporter {
     private CsvExporter() {}
 
@@ -14,7 +22,7 @@ public final class CsvExporter {
              OutputStreamWriter osw = new OutputStreamWriter(os, StandardCharsets.UTF_8);
              PrintWriter pw = new PrintWriter(osw)) {
 
-            // BOM para que Excel (Windows) detecte UTF-8 y acentos
+            // Marca de orden de bytes UTF-8
             os.write(new byte[] {(byte)0xEF,(byte)0xBB,(byte)0xBF});
 
             // Encabezados
@@ -24,7 +32,7 @@ public final class CsvExporter {
             }
             pw.println();
 
-            // Filas visibles (respeta orden y filtros del JTable)
+            // Filas visibles (respeta orden y filtros de los JTable)
             for (int vr = 0; vr < table.getRowCount(); vr++) {
                 for (int c = 0; c < table.getColumnCount(); c++) {
                     if (c > 0) pw.print(',');

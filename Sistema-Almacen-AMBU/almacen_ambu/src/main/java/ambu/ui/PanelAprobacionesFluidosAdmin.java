@@ -10,8 +10,14 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
+import javax.swing.JComponent;
 import java.sql.*;
 
+/*--------------------------------------------------------------------------
+    Panel para las aprobaciones de tickets de fluidos para administrador
+ --------------------------------------------------------------------------*/
 
 public class PanelAprobacionesFluidosAdmin extends JPanel {
 
@@ -60,7 +66,6 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
             @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { aplicarFiltroFluidos(); }
         });
 
-        // Filtro de búsqueda
         
         // === Zona central con TABLAS ===
         cabeceraModel = new CabeceraModel();
@@ -92,6 +97,14 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
         acciones.add(btnRefrescar); acciones.add(btnAprobar); acciones.add(btnRechazar);
         add(acciones, BorderLayout.SOUTH);
         actualizarBotones();
+        // Atajos de teclado
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+        .put(KeyStroke.getKeyStroke("F5"), "refreshF5");
+            getActionMap().put("refreshF5", new AbstractAction() {
+                @Override public void actionPerformed(ActionEvent e) {
+                    cargarCabeceras();
+                }
+            });
     }
 
     private void aplicarFiltroFluidos() {
@@ -233,35 +246,78 @@ public class PanelAprobacionesFluidosAdmin extends JPanel {
         }
     }
 
+    private String getEstadoSeleccionado() {
+        int viewRow = tblCabeceras.getSelectedRow();
+        if (viewRow < 0) return null;
+        int modelRow = tblCabeceras.convertRowIndexToModel(viewRow);
+         if (modelRow >= 0 && modelRow < cabeceraModel.getRowCount()) {
+            return cabeceraModel.rows.get(modelRow).estado;
+         }
+         return null;
+    }
+
     private void onAprobar() {
         Integer id = getIdSeleccionado();
         if (id == null) { JOptionPane.showMessageDialog(this, "Selecciona un ticket."); return; }
+        
+        String estadoActual = getEstadoSeleccionado();
+        if (!"PENDIENTE".equalsIgnoreCase(estadoActual)) {
+            JOptionPane.showMessageDialog(this, "Solo se pueden aprobar tickets con estado PENDIENTE.", "Acción no permitida", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         new SwingWorker<Void, Void>(){
-            protected Void doInBackground() throws Exception { service.aprobarRechazarFluido(id, true); return null; }
-            protected void done(){ cargarCabeceras(); cargarDetalleSeleccionado(); }
+            protected Void doInBackground() throws Exception {
+                service.aprobarRechazarFluido(id, true); 
+                return null;
+            }
+            protected void done(){
+                try {
+                    get(); 
+                    cargarCabeceras(); 
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(PanelAprobacionesFluidosAdmin.this, "Error al aprobar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         }.execute();
     }
 
     private void onRechazar() {
         Integer id = getIdSeleccionado();
         if (id == null) { JOptionPane.showMessageDialog(this, "Selecciona un ticket."); return; }
+
+        String estadoActual = getEstadoSeleccionado();
+        if (!"PENDIENTE".equalsIgnoreCase(estadoActual)) {
+             JOptionPane.showMessageDialog(this, "Solo se pueden rechazar tickets con estado PENDIENTE.", "Acción no permitida", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
         new SwingWorker<Void, Void>(){
-            protected Void doInBackground() throws Exception { service.aprobarRechazarFluido(id, false); return null; }
-            protected void done(){ cargarCabeceras(); cargarDetalleSeleccionado(); }
+            protected Void doInBackground() throws Exception {
+                service.aprobarRechazarFluido(id, false); 
+                return null;
+            }
+            protected void done(){
+                 try {
+                    get(); 
+                    cargarCabeceras(); 
+                } catch (Exception ex) {
+                     JOptionPane.showMessageDialog(PanelAprobacionesFluidosAdmin.this, "Error al rechazar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         }.execute();
     }
 
     private void actualizarBotones() {
-    boolean enable = false;
-    int viewRow = tblCabeceras.getSelectedRow();
-    if (viewRow >= 0) {
-        int modelRow = tblCabeceras.convertRowIndexToModel(viewRow);
-        String estado = String.valueOf(cabeceraModel.getValueAt(modelRow, 2));
-        enable = !( "EN_PRESTAMO".equalsIgnoreCase(estado) || "CERRADA".equalsIgnoreCase(estado) );
-        // enable = "PENDIENTE".equalsIgnoreCase(estado);
-    }
-    btnAprobar.setEnabled(enable);
-    btnRechazar.setEnabled(enable);
+        boolean enableAction = false;
+        String estado = getEstadoSeleccionado();
+        
+        if (estado != null) {
+            enableAction = "PENDIENTE".equalsIgnoreCase(estado);
+        }
+        
+        btnAprobar.setEnabled(enableAction);
+        btnRechazar.setEnabled(enableAction);
     }
 
     
