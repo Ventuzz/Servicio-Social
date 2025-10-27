@@ -272,7 +272,11 @@ public final class AgregarInsumo extends JDialog {
             return;
         }
         String obs = txtObs.getText().trim();
-
+        if (obs.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Las observaciones son obligatorias.", "Validación", JOptionPane.WARNING_MESSAGE);
+            txtObs.requestFocus();
+            return;
+        }
         if (onSave != null) {
             try {
                 onSave.accept(d.getIdExistencia(), cantidad, unidad, obs);
